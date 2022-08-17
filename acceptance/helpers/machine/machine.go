@@ -35,15 +35,17 @@ func New(dir string, user string, password string, root string, epinioBinaryPath
 }
 
 func (m *Machine) ShowStagingLogs(app string) {
-	_, _ = m.Epinio("", app, "app", "logs", "--staging", app)
+	_ = m.Epinio("", app, "app", "logs", "--staging", app)
 }
 
 // Epinio invokes the `epinio` binary, running the specified command.
 // It returns the command output and/or error.
 // dir parameter defines the directory from which the command should be run.
 // It defaults to the current dir if left empty.
-func (m *Machine) Epinio(dir, command string, arg ...string) (string, error) {
-	return proc.Run(dir, false, m.epinioBinaryPath, append([]string{command}, arg...)...)
+func (m *Machine) Epinio(dir, command string, arg ...string) string {
+	out, err := proc.Run(dir, false, m.epinioBinaryPath, append([]string{command}, arg...)...)
+	ExpectWithOffset(1, err).ToNot(HaveOccurred(), out)
+	return out
 }
 
 const stagingError = "Failed to stage"
@@ -62,22 +64,16 @@ func (m *Machine) EpinioPush(dir string, name string, arg ...string) (string, er
 func (m *Machine) SetupNamespace(namespace string) {
 	By(fmt.Sprintf("creating a namespace: %s", namespace))
 
-	out, err := m.Epinio("", "namespace", "create", namespace)
-	ExpectWithOffset(1, err).ToNot(HaveOccurred(), out)
-
-	out, err = m.Epinio("", "namespace", "show", namespace)
-	ExpectWithOffset(1, err).ToNot(HaveOccurred())
+	_ = m.Epinio("", "namespace", "create", namespace)
+	out := m.Epinio("", "namespace", "show", namespace)
 	ExpectWithOffset(1, out).To(MatchRegexp("Name.*|.*" + namespace))
 }
 
 func (m *Machine) TargetNamespace(namespace string) {
 	By(fmt.Sprintf("targeting a namespace: %s", namespace))
 
-	out, err := m.Epinio(m.nodeTmpDir, "target", namespace)
-	ExpectWithOffset(1, err).ToNot(HaveOccurred(), out)
-
-	out, err = m.Epinio(m.nodeTmpDir, "target")
-	ExpectWithOffset(1, err).ToNot(HaveOccurred(), out)
+	_ = m.Epinio(m.nodeTmpDir, "target", namespace)
+	out := m.Epinio(m.nodeTmpDir, "target")
 	ExpectWithOffset(1, out).To(MatchRegexp("Currently targeted namespace: " + namespace))
 }
 
@@ -89,17 +85,13 @@ func (m *Machine) SetupAndTargetNamespace(namespace string) {
 func (m *Machine) DeleteNamespace(namespace string) {
 	By(fmt.Sprintf("deleting a namespace: %s", namespace))
 
-	out, err := m.Epinio("", "namespace", "delete", "-f", namespace)
-	ExpectWithOffset(1, err).ToNot(HaveOccurred(), out)
-
-	out, err = m.Epinio("", "namespace", "show", namespace)
-	ExpectWithOffset(1, err).To(HaveOccurred())
+	_ = m.Epinio("", "namespace", "delete", "-f", namespace)
+	out := m.Epinio("", "namespace", "show", namespace)
 	ExpectWithOffset(1, out).To(MatchRegexp(".*Not Found: namespace '" + namespace + "' does not exist.*"))
 }
 
 func (m *Machine) VerifyNamespaceNotExist(namespace string) {
-	out, err := m.Epinio("", "namespace", "list")
-	ExpectWithOffset(1, err).ToNot(HaveOccurred(), out)
+	out := m.Epinio("", "namespace", "list")
 	ExpectWithOffset(1, out).ToNot(MatchRegexp(namespace))
 }
 
@@ -163,14 +155,11 @@ func (m *Machine) GetSettings() (*settings.Settings, error) {
 //
 // __Attention__: The created files and directory are __not cleaned up automatically__
 func (m *Machine) SaveApplicationSpec(appName string) {
+	manifestPath := filepath.Join(m.nodeTmpDir, appName+"-manifest.yaml")
+	_ = m.Epinio("", "app", "manifest", appName, manifestPath)
 
-	out, err := m.Epinio("", "app", "manifest", appName,
-		filepath.Join(m.nodeTmpDir, appName+"-manifest.yaml"))
-	Expect(err).ToNot(HaveOccurred(), out)
-
-	out, err = m.Epinio("", "app", "export",
-		filepath.Join(m.nodeTmpDir, appName, appName+"-helm"))
-	Expect(err).ToNot(HaveOccurred(), out)
+	helmPath := filepath.Join(m.nodeTmpDir, appName, appName+"-helm")
+	_ = m.Epinio("", "app", "export", helmPath)
 }
 
 // SaveServerLogs is a debugging helper function saving the

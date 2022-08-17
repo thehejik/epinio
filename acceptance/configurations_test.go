@@ -38,8 +38,7 @@ var _ = Describe("Configurations", func() {
 		})
 
 		It("shows all created configurations", func() {
-			out, err := env.Epinio("", "configuration", "list")
-			Expect(err).ToNot(HaveOccurred(), out)
+			out := env.Epinio("", "configuration", "list")
 
 			Expect(out).To(
 				HaveATable(
@@ -97,8 +96,7 @@ var _ = Describe("Configurations", func() {
 		It("lists all configurations belonging to all namespaces", func() {
 			// But we care only about the three we know about from the setup.
 
-			out, err := env.Epinio("", "configuration", "list", "--all")
-			Expect(err).ToNot(HaveOccurred(), out)
+			out := env.Epinio("", "configuration", "list", "--all")
 			Expect(out).To(ContainSubstring("Listing all configurations"))
 			Expect(out).To(
 				HaveATable(
@@ -139,8 +137,7 @@ var _ = Describe("Configurations", func() {
 			env.MakeContainerImageApp(appName, 1, containerImageURL)
 			env.BindAppConfiguration(appName, configurationName1, namespace)
 
-			out, err := env.Epinio("", "configuration", "delete", configurationName1)
-			Expect(err).ToNot(HaveOccurred(), out)
+			out := env.Epinio("", "configuration", "delete", configurationName1)
 
 			Expect(out).To(ContainSubstring("Unable to delete configuration. It is still used by"))
 			Expect(out).To(
@@ -155,18 +152,16 @@ var _ = Describe("Configurations", func() {
 
 			// Delete again, and force unbind
 
-			out, err = env.Epinio("", "configuration", "delete", "--unbind", configurationName1)
-			Expect(err).ToNot(HaveOccurred(), out)
+			out = env.Epinio("", "configuration", "delete", "--unbind", configurationName1)
 			Expect(out).To(ContainSubstring("Configuration Removed"))
 
 			env.VerifyAppConfigurationNotbound(appName, configurationName1, namespace, 1)
 
 			// And check non-presence
-			Eventually(func() string {
-				out, err = env.Epinio("", "configuration", "list")
-				Expect(err).ToNot(HaveOccurred(), out)
-				return out
-			}, "2m").ShouldNot(
+			Eventually(
+				env.Epinio("", "configuration", "list"),
+				"2m",
+			).ShouldNot(
 				HaveATable(
 					WithHeaders("NAME", "CREATED", "APPLICATIONS"),
 					WithRow(configurationName1, WithDate(), ""),
@@ -227,8 +222,7 @@ var _ = Describe("Configurations", func() {
 		})
 
 		It("it shows configuration details", func() {
-			out, err := env.Epinio("", "configuration", "show", configurationName1)
-			Expect(err).ToNot(HaveOccurred(), out)
+			out := env.Epinio("", "configuration", "show", configurationName1)
 			Expect(out).To(ContainSubstring("Configuration Details"))
 
 			Expect(out).To(
@@ -251,11 +245,10 @@ var _ = Describe("Configurations", func() {
 			env.BindAppConfiguration(appName, configurationName1, namespace)
 
 			// Wait for the app restart from binding the configuration to settle
-			Eventually(func() string {
-				out, err := env.Epinio("", "app", "list")
-				Expect(err).ToNot(HaveOccurred(), out)
-				return out
-			}, "5m").Should(
+			Eventually(
+				env.Epinio("", "app", "list"),
+				"5m",
+			).Should(
 				HaveATable(
 					WithHeaders("NAME", "CREATED", "STATUS", "ROUTES", "CONFIGURATIONS", "STATUS DETAILS"),
 					WithRow(appName, WithDate(), "1/1", appName+".*", configurationName1, ""),
@@ -272,11 +265,10 @@ var _ = Describe("Configurations", func() {
 		It("it edits the configuration, and restarts the app", func() {
 			// edit the configuration ...
 
-			out, err := env.Epinio("", "configuration", "update", configurationName1,
+			out := env.Epinio("", "configuration", "update", configurationName1,
 				"--remove", "username",
 				"--set", "user=ci/cd",
 			)
-			Expect(err).ToNot(HaveOccurred(), out)
 
 			Expect(out).To(ContainSubstring("Update Configuration"))
 			Expect(out).To(
@@ -290,8 +282,7 @@ var _ = Describe("Configurations", func() {
 
 			// Confirm the changes ...
 
-			out, err = env.Epinio("", "configuration", "show", configurationName1)
-			Expect(err).ToNot(HaveOccurred(), out)
+			out = env.Epinio("", "configuration", "show", configurationName1)
 
 			Expect(out).To(ContainSubstring("Configuration Details"))
 			Expect(out).To(
@@ -303,11 +294,10 @@ var _ = Describe("Configurations", func() {
 
 			// Wait for app to resettle ...
 
-			Eventually(func() string {
-				out, err := env.Epinio("", "app", "list")
-				Expect(err).ToNot(HaveOccurred(), out)
-				return out
-			}, "5m").Should(
+			Eventually(
+				env.Epinio("", "app", "list"),
+				"5m",
+			).Should(
 				HaveATable(
 					WithHeaders("NAME", "CREATED", "STATUS", "ROUTES", "CONFIGURATIONS", "STATUS DETAILS"),
 					WithRow(appName, WithDate(), "1/1", appName+".*", configurationName1, ""),

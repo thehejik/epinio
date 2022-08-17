@@ -29,20 +29,17 @@ var _ = Describe("Settings", func() {
 
 	Describe("Ensemble", func() {
 		It("fails for a bogus sub command", func() {
-			out, err := env.Epinio("", "settings", "bogus", "...")
-			Expect(err).To(HaveOccurred())
+			out := env.Epinio("", "settings", "bogus", "...")
 			Expect(out).To(ContainSubstring(`Unknown method "bogus"`))
 		})
 	})
 
 	Describe("Colors", func() {
 		It("changes the settings when disabling colors", func() {
-			settings, err := env.Epinio("", "settings", "colors", "0", "--settings-file", tmpSettingsPath)
-			Expect(err).ToNot(HaveOccurred())
+			settings := env.Epinio("", "settings", "colors", "0", "--settings-file", tmpSettingsPath)
 			Expect(settings).To(ContainSubstring(`Colors: false`))
 
-			settings, err = env.Epinio("", "settings", "show", "--settings-file", tmpSettingsPath)
-			Expect(err).ToNot(HaveOccurred())
+			settings = env.Epinio("", "settings", "show", "--settings-file", tmpSettingsPath)
 			Expect(settings).To(
 				HaveATable(
 					WithHeaders("KEY", "VALUE"),
@@ -52,12 +49,10 @@ var _ = Describe("Settings", func() {
 		})
 
 		It("changes the settings when enabling colors", func() {
-			settings, err := env.Epinio("", "settings", "colors", "1", "--settings-file", tmpSettingsPath)
-			Expect(err).ToNot(HaveOccurred())
+			settings := env.Epinio("", "settings", "colors", "1", "--settings-file", tmpSettingsPath)
 			Expect(settings).To(ContainSubstring(`Colors: true`))
 
-			settings, err = env.Epinio("", "settings", "show", "--settings-file", tmpSettingsPath)
-			Expect(err).ToNot(HaveOccurred())
+			settings = env.Epinio("", "settings", "show", "--settings-file", tmpSettingsPath)
 			Expect(settings).To(
 				HaveATable(
 					WithHeaders("KEY", "VALUE"),
@@ -69,8 +64,7 @@ var _ = Describe("Settings", func() {
 
 	Describe("Show", func() {
 		It("shows the settings", func() {
-			settings, err := env.Epinio("", "settings", "show")
-			Expect(err).ToNot(HaveOccurred())
+			settings := env.Epinio("", "settings", "show")
 			Expect(settings).To(
 				HaveATable(
 					WithHeaders("KEY", "VALUE"),
@@ -87,8 +81,7 @@ var _ = Describe("Settings", func() {
 		})
 
 		It("shows empty settings", func() {
-			settings, err := env.Epinio("", "settings", "show", "--settings-file", "/tmp/empty")
-			Expect(err).ToNot(HaveOccurred())
+			settings := env.Epinio("", "settings", "show", "--settings-file", "/tmp/empty")
 			Expect(settings).To(
 				HaveATable(
 					WithHeaders("KEY", "VALUE"),
@@ -105,8 +98,7 @@ var _ = Describe("Settings", func() {
 		})
 
 		It("shows the settings with the password in plaintext", func() {
-			settings, err := env.Epinio("", "settings", "show", "--show-password")
-			Expect(err).ToNot(HaveOccurred())
+			settings := env.Epinio("", "settings", "show", "--show-password")
 			Expect(settings).To(
 				HaveATable(
 					WithHeaders("KEY", "VALUE"),
@@ -129,8 +121,7 @@ var _ = Describe("Settings", func() {
 			// Get back the certs and credentials
 			// Note that `namespace`, as a purely local setting, is not restored
 
-			out, err := env.Epinio("", "settings", "update-ca", "--settings-file", tmpSettingsPath)
-			Expect(err).ToNot(HaveOccurred())
+			out := env.Epinio("", "settings", "update-ca", "--settings-file", tmpSettingsPath)
 			Expect(out).To(ContainSubstring(`Updating CA in the stored credentials`))
 
 			oldSettings, err := env.GetSettingsFrom(oldSettingsPath)
@@ -145,8 +136,7 @@ var _ = Describe("Settings", func() {
 		})
 
 		It("stores the password in base64", func() {
-			out, err := env.Epinio("", "settings", "update-ca", "--settings-file", tmpSettingsPath)
-			Expect(err).ToNot(HaveOccurred())
+			out := env.Epinio("", "settings", "update-ca", "--settings-file", tmpSettingsPath)
 			Expect(out).To(ContainSubstring(`Updating CA in the stored credentials`))
 
 			settings, err := env.GetSettingsFrom(oldSettingsPath)
