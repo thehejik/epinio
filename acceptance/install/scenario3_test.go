@@ -29,6 +29,8 @@ var _ = Describe("<Scenario3> RKE, Private CA, Configuration, on External Regist
 		domainIP          string
 		extraEnvName      string
 		extraEnvValue     string
+		name_exists       bool
+		value_exists      bool
 		// testenv.New is not needed for VerifyAppConfigurationBound helper :shrug:
 		env          testenv.EpinioEnv
 		localpathURL = "https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.20/deploy/local-path-storage.yaml"
@@ -63,8 +65,8 @@ var _ = Describe("<Scenario3> RKE, Private CA, Configuration, on External Regist
 			"--set", "global.registryNamespace=splatform",
 		}
 
-		extraEnvName, name_exists := os.LookupEnv("EXTRAENV_NAME")
-		extraEnvValue, value_exists := os.LookupEnv("EXTRAENV_VALUE")
+		extraEnvName, name_exists = os.LookupEnv("EXTRAENV_NAME")
+		extraEnvValue, value_exists = os.LookupEnv("EXTRAENV_VALUE")
 		if name_exists && value_exists {
 			flags = append(flags, "--set", "extraEnv[0].name=" + extraEnvName, "--set-string", "extraEnv[0].value=" + extraEnvValue)
 		}
