@@ -39,10 +39,10 @@ var _ = Describe("Epinio upgrade with running app", func() {
 
 	AfterEach(func() {
 		// After upgrade ...
-		env.DeleteApp(appName)
-		env.DeleteApp(appAfter)
-		env.DeleteService(service)
-		env.DeleteNamespace(namespace)
+		// env.DeleteApp(appName)
+		// env.DeleteApp(appAfter)
+		// env.DeleteService(service)
+		// env.DeleteNamespace(namespace)
 	})
 
 	It("can upgrade epinio", func() {
@@ -197,7 +197,7 @@ var _ = Describe("Epinio upgrade with running app", func() {
 			Expect(string(bodyBytes)).To(ContainSubstring("WordPress"))
 
 			return resp.StatusCode
-		}, 30*time.Second, 1*time.Second).Should(Equal(http.StatusOK))
+		}, 120*time.Second, 10*time.Second).Should(Equal(http.StatusOK))
 
 		// Upgrade to current as found in checkout
 		epinioHelper.Upgrade()
@@ -227,7 +227,7 @@ var _ = Describe("Epinio upgrade with running app", func() {
 			Expect(string(bodyBytes)).To(ContainSubstring("WordPress"))
 
 			return resp.StatusCode
-		}, 30*time.Second, 1*time.Second).Should(Equal(http.StatusOK))
+		}, 120*time.Second, 10*time.Second).Should(Equal(http.StatusOK))
 	})
 
 })
