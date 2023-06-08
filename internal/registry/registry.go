@@ -1,10 +1,20 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 // Package registry implements the various functions needed to store and retrieve images
 // from a container registry.
 package registry
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"regexp"
 	"strings"
@@ -38,27 +48,6 @@ type DockerConfigJSON struct {
 type ConnectionDetails struct {
 	RegistryCredentials []RegistryCredentials
 	Namespace           string
-}
-
-// DockerConfigJSON returns a DockerConfigJSON object from the connection
-// details. This object can be marshaled and stored into a Kubernetes secret.
-func (d *ConnectionDetails) DockerConfigJSON() (*DockerConfigJSON, error) {
-	result := DockerConfigJSON{Auths: map[string]ContainerRegistryAuth{}}
-
-	for _, r := range d.RegistryCredentials {
-		if r.URL == "" {
-			return nil, errors.New("url must be specified")
-		}
-		auth := ContainerRegistryAuth{
-			Auth:     base64.StdEncoding.EncodeToString([]byte(r.Username + ":" + r.Password)),
-			Username: r.Username,
-			Password: r.Password,
-		}
-
-		result.Auths[r.URL] = auth
-	}
-
-	return &result, nil
 }
 
 // PublicRegistryURL returns the public registry URL from the connection details

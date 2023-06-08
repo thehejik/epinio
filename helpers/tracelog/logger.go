@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 // Package tracelog provides a logger for debugging and tracing
 // This logger will not print anything, unless TRACE_LEVEL is at least 1
 package tracelog
@@ -29,7 +40,10 @@ func TraceOutput() string {
 func LoggerFlags(pf *flag.FlagSet, argToEnv map[string]string) {
 	// trace-level 0 prints nothing, well technically it would print NewLogger().V(-1)
 	pf.IntP("trace-level", "", 0, "Only print trace messages at or above this level (0 to 255, default 0, print nothing)")
-	viper.BindPFlag("trace-level", pf.Lookup("trace-level"))
+	err := viper.BindPFlag("trace-level", pf.Lookup("trace-level"))
+	if err != nil {
+		log.Fatal(err)
+	}
 	argToEnv["trace-level"] = "TRACE_LEVEL"
 }
 

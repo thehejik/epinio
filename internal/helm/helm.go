@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 // Package helm contains the epinio-specific core to the helm client libraries. It exposes
 // the functionality to deploy and remove helm charts/releases.
 package helm
@@ -8,6 +19,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/pkg/errors"
 
@@ -36,6 +48,7 @@ type ServiceParameters struct {
 	Version       string              // Version of helm chart to deploy
 	Repository    string              // Helm repository holding the chart to deploy
 	Values        string              // Chart customization (YAML-formatted string)
+	Wait          bool                // Wait for service to deploy
 }
 
 type ConfigParameter struct {
@@ -141,7 +154,7 @@ func DeployService(logger logr.Logger, parameters ServiceParameters) error {
 		ChartName:   helmChart,
 		Version:     helmVersion,
 		Namespace:   parameters.Namespace,
-		Atomic:      true,
+		Wait:        parameters.Wait,
 		ValuesYaml:  string(parameters.Values),
 		Timeout:     duration.ToDeployment(),
 		ReuseValues: true,
@@ -344,7 +357,7 @@ func Deploy(logger logr.Logger, parameters ChartParameters) error {
 		Version:     helmVersion,
 		Namespace:   parameters.Namespace,
 		Wait:        true,
-		Atomic:      true,
+		Atomic:      true, // implies `Wait true`
 		ValuesYaml:  string(yamlParameters),
 		Timeout:     duration.ToDeployment(),
 		ReuseValues: true,
@@ -373,6 +386,16 @@ func Status(ctx context.Context, logger logr.Logger, cluster *kubernetes.Cluster
 	return r.Info.Status, nil
 }
 
+// syncNamespaceClientMap is holding a SynchronizedClient for each namespace
+var syncNamespaceClientMap sync.Map
+
+type SynchronizedClient struct {
+	namespace string
+	// mutexMap is holding the mutexes for the same releases
+	mutexMap   sync.Map
+	helmClient hc.Client
+}
+
 func GetHelmClient(restConfig *rest.Config, logger logr.Logger, namespace string) (hc.Client, error) {
 	options := &hc.RestConfClientOptions{
 		RestConfig: restConfig,
@@ -387,8 +410,28 @@ func GetHelmClient(restConfig *rest.Config, logger logr.Logger, namespace string
 			},
 		},
 	}
+	helmClient, err := hc.NewClientFromRestConf(options)
+	if err != nil {
+		return nil, err
+	}
 
-	return hc.NewClientFromRestConf(options)
+	return GetNamespaceSynchronizedHelmClient(namespace, helmClient)
+}
+
+func GetNamespaceSynchronizedHelmClient(namespace string, helmClient hc.Client) (*SynchronizedClient, error) {
+	synchronizedHelmClient := &SynchronizedClient{
+		namespace:  namespace,
+		helmClient: helmClient,
+	}
+
+	// we are loading the SynchronizedClient for this namespace, if any
+	loadedSynchronizedHelmClient, _ := syncNamespaceClientMap.LoadOrStore(namespace, synchronizedHelmClient)
+	synchronizedHelmClient, ok := loadedSynchronizedHelmClient.(*SynchronizedClient)
+	if !ok {
+		return nil, errors.New("error while loading SynchronizedClient from the sync.Map")
+	}
+
+	return synchronizedHelmClient, nil
 }
 
 // cleanupReleaseIfNeeded will delete the helm release if it exists and is not

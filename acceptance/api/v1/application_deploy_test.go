@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package v1_test
 
 import (
@@ -36,7 +47,6 @@ var _ = Describe("AppDeploy Endpoint", LApplication, func() {
 	})
 
 	Context("with staging", func() {
-
 		BeforeEach(func() {
 			deployRequest = models.DeployRequest{
 				App: models.AppRef{
@@ -244,6 +254,34 @@ var _ = Describe("AppDeploy Endpoint", LApplication, func() {
 				Expect(err).NotTo(HaveOccurred(), out)
 				Expect(strings.Split(out, " ")).To(ConsistOf(routes))
 			})
+		})
+	})
+
+	Context("from git repository", func() {
+		BeforeEach(func() {
+			// Note: The deploy request is incomplete - no image url
+			// That is ok, as it is used only to check a validation.
+			// I.e. no actual deployment happens
+			deployRequest = models.DeployRequest{
+				App: models.AppRef{
+					Meta: models.Meta{
+						Name:      appName,
+						Namespace: namespace,
+					},
+				},
+				Origin: models.ApplicationOrigin{
+					Kind: models.OriginGit,
+					Git: &models.GitRef{
+						URL: "https://github.com/epinio/example-wordpress",
+					},
+				},
+			}
+		})
+
+		It("rejects a bad provider specification", func() {
+			deployRequest.Origin.Git.Provider = "bogus"
+			response := deployApplicationWithFailure(appName, namespace, deployRequest)
+			Expect(response.Errors[0].Error()).To(ContainSubstring("bad git provider `bogus`"))
 		})
 	})
 })

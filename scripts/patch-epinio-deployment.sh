@@ -1,4 +1,14 @@
 #!/bin/bash
+# Copyright © 2021 - 2023 SUSE LLC
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 set -e
 
@@ -116,10 +126,14 @@ kubectl delete pod -n epinio epinio-copier
 EPINIO_BINARY_HASH=($(${SHASUM:=shasum} ${EPINIO_BINARY_PATH}))
 
 helper=""
-if [ -n "$EPINIO_COVERAGE" ]; then
-  helper=',{"name": "tools", "image": "alpine", "command": ["sleep","9000"], "volumeMounts": [{"mountPath": "/tmp", "name": "tmp-volume"}]}'
+if [ -n "$GOCOVERDIR" ]; then
+  helper=',{"name": "tools", "image": "alpine", "command": ["/bin/sh", "-ec", "trap : TERM INT; sleep infinity & wait"], "volumeMounts": [{"mountPath": "/tmp", "name": "tmp-volume"}]}'
 fi
 
+# Due to PV Multi-Attach Error on AKS the RollingUpdate strategy is needed.
+# It will remove the original epinio-server pod immediatelly after patching.
+# Note: Scaling deployment to 0 replicas and then back to 1 after patching would work similarly.
+# Ref. https://github.com/andyzhangx/demo/blob/master/issues/azuredisk-issues.md#25-multi-attach-error
 echo "Patching the epinio-server deployment to use the copied binary"
 PATCH=$(cat <<EOF
 { "spec": { "template": {
@@ -151,6 +165,13 @@ PATCH=$(cat <<EOF
           ]
         }$helper]
       }
+    },
+    "strategy": {
+      "rollingUpdate": {
+        "maxSurge": 0,
+        "maxUnavailable": 1
+      },
+      "type": "RollingUpdate"
     }
   }
 }

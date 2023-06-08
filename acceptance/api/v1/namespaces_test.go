@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package v1_test
 
 import (
@@ -153,6 +164,22 @@ var _ = Describe("Namespaces API Application Endpoints", LNamespace, func() {
 
 				// cleanup
 				env.DeleteNamespace("birdy")
+			})
+
+			It("fails for a name not fitting kubernetes requirements", func() {
+				response, err := env.Curl("POST", fmt.Sprintf("%s%s/namespaces",
+					serverURL, api.Root),
+					strings.NewReader(`{"name":"BOGUS"}`))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(response).ToNot(BeNil())
+				defer response.Body.Close()
+				bodyBytes, err := io.ReadAll(response.Body)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(response.StatusCode).To(Equal(http.StatusBadRequest), string(bodyBytes))
+				var responseBody map[string][]errors.APIError
+				json.Unmarshal(bodyBytes, &responseBody)
+				Expect(responseBody["errors"][0].Title).To(
+					ContainSubstring("name must consist of lower case alphanumeric"))
 			})
 
 			It("fails for a restricted namespace", func() {

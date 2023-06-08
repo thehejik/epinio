@@ -1,3 +1,14 @@
+# Copyright © 2021 - 2023 SUSE LLC
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 ---
 project_name: epinio
 
@@ -47,6 +58,7 @@ changelog:
 
 env:
   - CGO_ENABLED=0
+  - DOCKER_CLI_EXPERIMENTAL=enabled
 
 snapshot:
   name_template: "{{ .Tag }}-next"
@@ -74,6 +86,52 @@ dockers:
     - "--label=org.opencontainers.image.version={{.Version}}"
     - "--label=org.opencontainers.image.source=https://github.com/epinio/epinio"
     - "--platform=linux/amd64"
+
+  -
+    use: buildx
+    goos: linux
+    goarch: arm64
+    image_templates:
+    - "ghcr.io/epinio/epinio-unpacker:{{ .Tag }}-arm64v8"
+
+    # Skips the docker push.
+    #skip_push: "true"
+
+    # Path to the Dockerfile (from the project root).
+    dockerfile: images/unpacker-Dockerfile
+
+    # Template of the docker build flags.
+    build_flag_templates:
+    - "--pull"
+    - "--label=org.opencontainers.image.created={{.Date}}"
+    - "--label=org.opencontainers.image.title={{.ProjectName}}"
+    - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+    - "--label=org.opencontainers.image.version={{.Version}}"
+    - "--label=org.opencontainers.image.source=https://github.com/epinio/epinio"
+    - "--platform=linux/arm64/v8"
+
+  -
+    use: buildx
+    goos: linux
+    goarch: s390x
+    image_templates:
+    - "ghcr.io/epinio/epinio-unpacker:{{ .Tag }}-s390x"
+
+    # Skips the docker push.
+    #skip_push: "true"
+
+    # Path to the Dockerfile (from the project root).
+    dockerfile: images/unpacker-Dockerfile
+
+    # Template of the docker build flags.
+    build_flag_templates:
+    - "--pull"
+    - "--label=org.opencontainers.image.created={{.Date}}"
+    - "--label=org.opencontainers.image.title={{.ProjectName}}"
+    - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+    - "--label=org.opencontainers.image.version={{.Version}}"
+    - "--label=org.opencontainers.image.source=https://github.com/epinio/epinio"
+    - "--platform=linux/s390x"
 
   -
     use: buildx
@@ -200,6 +258,18 @@ docker_manifests:
     - "ghcr.io/epinio/epinio-server:{{ .Tag }}-arm64v8"
     - "ghcr.io/epinio/epinio-server:{{ .Tag }}-armv7"
     - "ghcr.io/epinio/epinio-server:{{ .Tag }}-s390x"
+  -
+    name_template: "ghcr.io/epinio/epinio-unpacker:{{ .Tag }}"
+    image_templates:
+    - "ghcr.io/epinio/epinio-unpacker:{{ .Tag }}-amd64"
+    - "ghcr.io/epinio/epinio-unpacker:{{ .Tag }}-arm64v8"
+    - "ghcr.io/epinio/epinio-unpacker:{{ .Tag }}-s390x"
+  -
+    name_template: "ghcr.io/epinio/epinio-unpacker:latest"
+    image_templates:
+    - "ghcr.io/epinio/epinio-unpacker:{{ .Tag }}-amd64"
+    - "ghcr.io/epinio/epinio-unpacker:{{ .Tag }}-arm64v8"
+    - "ghcr.io/epinio/epinio-unpacker:{{ .Tag }}-s390x"
 
 brews:
   - name: epinio
@@ -218,10 +288,60 @@ brews:
     test: |
       output = shell_output("#{bin}/epinio version 2>&1")
       assert_match "Epinio Version: #{version}", output
-
       output = shell_output("#{bin}/epinio settings update-ca 2>&1")
       assert_match "failed to get kube config", output
       assert_match "no configuration has been provided", output
+
 release:
+  # Do not auto-publish the release
+  draft: true
+  # Replace the existing draft
+  replace_existing_draft: true
+  # Keep the release notes
+  mode: keep-existing
+
   extra_files:
     - glob: ./helm-charts/chart/epinio/crds/*
+
+# Based on https://blog.goreleaser.com/goreleaser-and-software-supply-chain-security-e8917b26924b
+##
+
+# creates SBOMs of all archives and the source tarball using syft
+# https://goreleaser.com/customization/sbom
+# Two different sbom configurations need two different IDs
+
+sboms:
+  - id: archive 
+    artifacts: archive
+  - id: source
+    artifacts: source
+  - id: binary
+    artifacts: binary
+
+# signs our docker images
+# https://goreleaser.com/customization/docker_sign
+
+docker_signs:
+  - cmd: cosign
+    artifacts: all
+    output: true
+    args:
+    - 'sign'
+    - '${artifact}@${digest}'
+    - "--yes" # needed on cosign 2.0.0+
+
+# signs the checksum file and other blobs. all files (including the sboms) are included in the
+# checksum, so we don't need to sign each one if we don't want to
+# https://goreleaser.com/customization/sign
+
+signs:
+- cmd: cosign
+  certificate: '${artifact}.pem'
+  args:
+    - sign-blob
+    - '--output-certificate=${certificate}'
+    - '--output-signature=${signature}'
+    - '${artifact}'
+    - "--yes" # needed on cosign 2.0.0+
+  artifacts: checksum
+  output: true

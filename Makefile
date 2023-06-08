@@ -1,3 +1,14 @@
+# Copyright © 2021 - 2023 SUSE LLC
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 ########################################################################
 ## Development
 
@@ -24,7 +35,7 @@ build: build-amd64
 
 # amd64 variant
 build-cover:
-	GOARCH="amd64" GOOS="linux" CGO_ENABLED=0 go test -c -covermode=count -coverpkg ./... -o dist/epinio-linux-amd64-coverage
+	GOARCH="amd64" GOOS="linux" CGO_ENABLED=0 go build -cover -covermode=count -coverpkg ./... $(BUILD_ARGS) -ldflags '$(LDFLAGS)' -o dist/epinio-linux-amd64
 
 build-win: build-windows
 
@@ -83,9 +94,9 @@ tag:
 
 FLAKE_ATTEMPTS ?= 2
 GINKGO_NODES ?= 2
-GINKGO_SLOW_TRESHOLD ?= 200
+GINKGO_POLL_PROGRESS_AFTER ?= 200s
 REGEX ?= ""
-STANDARD_TEST_OPTIONS= -v --nodes ${GINKGO_NODES} --slow-spec-threshold ${GINKGO_SLOW_TRESHOLD}s --randomize-all --flake-attempts=${FLAKE_ATTEMPTS} --fail-on-pending
+STANDARD_TEST_OPTIONS= -v --nodes ${GINKGO_NODES} --poll-progress-after ${GINKGO_POLL_PROGRESS_AFTER} --randomize-all --flake-attempts=${FLAKE_ATTEMPTS} --fail-on-pending
 
 acceptance-cluster-delete:
 	k3d cluster delete epinio-acceptance
@@ -148,19 +159,19 @@ generate-cli-docs:
 	@./scripts/cli-docs-generate.sh ../docs/docs/references/commands/cli
 
 lint:
-	go vet ./...
+	golangci-lint run --skip-files docs.go
 
 tidy:
 	go mod tidy
 
 fmt:
-	go fmt ./...
-
-check:
-	golangci-lint run --skip-files docs.go
+	go fmt ./... ; git checkout -- internal/api/v1/docs/docs.go
 
 patch-epinio-deployment:
 	@./scripts/patch-epinio-deployment.sh
+
+appchart:
+	@./scripts/appchart.sh
 
 ########################################################################
 # Docs
@@ -205,6 +216,12 @@ install-cert-manager:
 
 install-epinio-ui:
 	@./scripts/install-epinio-ui.sh
+
+install-upgrade-responder:
+	@./scripts/install-upgrade-responder.sh
+
+uninstall-upgrade-responder:
+	helm uninstall -n epinio upgrade-responder --wait || true
 
 prepare_environment_k3d: build-linux-amd64 build-images
 	@./scripts/prepare-environment-k3d.sh

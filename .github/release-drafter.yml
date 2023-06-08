@@ -1,36 +1,46 @@
+# Copyright © 2021 - 2023 SUSE LLC
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 categories:
   - title: '🚀 Features'
     labels:
-      - 'feature'
-      - 'enhancement'
+      - 'kind/enhancement'
   - title: '🐛 Bug Fixes'
     labels:
-      - 'fix'
-      - 'bugfix'
-      - 'bug'
+      - 'kind/bug'
+  - title: '📓 Documentation'
+    labels:
+      - 'area/documentation'
   - title: '🧰 Maintenance'
     labels:
-      - 'chore'
-      - '🤖 dependencies'
+      - 'kind/chore'
+      - 'kind/dependencies'
 
 exclude-labels:
-  - apparently external cause
-  - devops admin
-  - duplicate
-  - invalid
-  - later
-  - overcome by events
-  - spike
-  - wontfix
-  - do not log
-  - question
-  - QA
-  - skip-changelog
+  - 'area/QA'
+  - 'kind/question'
+  - 'kind/spike'
+  - 'status/apparently external cause'
+  - 'status/devops admin'
+  - 'status/do not log'
+  - 'status/duplicate'
+  - 'status/invalid'
+  - 'status/later'
+  - 'status/overcome by events'
+  - 'status/skip-changelog'
+  - 'status/wontfix'
 
 change-template: '- $TITLE (#$NUMBER)'
 change-title-escapes: '\<*_&' # You can add # and @ to disable mentions, and add ` to disable code blocks.
-tag-template: 'v$RESOLVED_VERSION'
-name-template: 'v$RESOLVED_VERSION 🌈'
+
 template: |
 
   # What's Changed
@@ -50,13 +60,13 @@ version-resolver:
     labels:
       - 'minor'
       - 'feature'
-      - 'enhancement'
-      - 'dependencies'
+      - 'kind/enhancement'
   patch:
     labels:
       - 'patch'
       - 'fix'
       - 'bugfix'
-      - 'bug'
-      - 'chore'
+      - 'kind/bug'
+      - 'kind/chore'
+      - 'kind/dependencies'
   default: patch

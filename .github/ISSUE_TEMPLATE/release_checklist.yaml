@@ -1,7 +1,19 @@
+# Copyright © 2021 - 2023 SUSE LLC
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 name: Release Checklist
 description: Checklist for a new Epinio release
 title: 'Release vX.Y.Z'
-labels: ["release"]
+labels:
+  - kind/release
 body:
   - type: markdown
     attributes:
@@ -15,6 +27,33 @@ body:
         ---
 
   - type: checkboxes
+    id: epinio-ui-checklist
+    attributes:
+      label: Epinio UI [OPTIONAL]
+      options:
+        - label: >
+            **( 📝 Manual step )**  Tag the Epinio Dashboard in the `epinio-dev` branch in the `rancher/dashboard`.
+            The tag needs to be in the `epinio-standalone-vX.Y.Z-a.b.c` format. The first part usually refers to the Epinio release (ie: v1.8.0),
+            while the second one is an incremental version (`0.0.1`): `epinio-standalone-v1.8.0-0.0.1`
+            `git tag -a epinio-standalone-vX.Y.Z-a.b.c -m 'epinio-standalone-vX.Y.Z-a.b.c'`
+            `git push --tags`
+            Check the release action, and the generated bundle.
+            [LINK](https://github.com/rancher/dashboard/actions/workflows/release-rancher-epinio-standalone.yml)
+            [TAGS](https://github.com/rancher/dashboard/tags)            
+        - label: >
+            **( 📝 Manual step )** Update the UI_BUNDLE_URL in the `epinio/ui-backend` repository to get the latest dashboard.
+            Open a PR and merge it.
+            [LINK](https://github.com/epinio/ui-backend/blob/main/.github/workflows/release.yml)
+        - label: >
+            **( 📝 Manual step )** Tag the `epinio/ui-backend` and check the release action.
+            `git tag -a vX.Y.Z-a.b.c -m 'vX.Y.Z-a.b.c'`
+            `git push --tags`
+            [LINK](https://github.com/epinio/ui-backend/actions/workflows/release.yml)
+        - label: >
+            **( 📝 Manual step )** Check the `epinio/helm-charts` pull requests for the latest updates. Merge the PR.
+            [LINK](https://github.com/epinio/helm-charts/pulls?q=is%3Apr+author%3Aapp%2Fgithub-actions)
+
+  - type: checkboxes
     id: epinio-checklist
     attributes:
       label: Epinio
@@ -23,20 +62,16 @@ body:
             Check the CI status in `epinio/epinio`
             [![CI](https://github.com/epinio/epinio/workflows/CI/badge.svg?branch=main)](https://github.com/epinio/epinio/actions/workflows/main.yml?query=branch%3Amain)
         - label: >
-            **( 📝 Manual step )** Edit the latest draft release, then publish the release.
-            [LINK](https://github.com/epinio/epinio/releases)
-        - label: >
-            Check the release action result.
+            **( 📝 Manual step )** Tag `epinio` and check the release action.
+            `git tag -a vX.Y.Z -m 'vX.Y.Z'`
+            `git push --tags`
             [LINK](https://github.com/epinio/epinio/actions/workflows/release.yml)
         - label: >
             Check the release page for the latest assets and changelog.
             [LINK](https://github.com/epinio/epinio/releases)
         - label: >
-            Check that the `epinio/homebrew-tap` Formula was updated
+            Check the `epinio/homebrew-tap` for the latest version.
             [LINK](https://github.com/epinio/homebrew-tap/blob/main/Formula/epinio.rb)
-        - label: >
-            Check that the `Homebrew/homebrew-core` has an open (or already closed) PR with the latest Epinio version.
-            [LINK](https://github.com/Homebrew/homebrew-core/pulls?q=is%3Apr+epinio)
           
   - type: checkboxes
     id: helm-charts-checklist
@@ -44,19 +79,34 @@ body:
       label: Helm Charts
       options:
         - label: >
-            **( 📝 Manual step )** Ensure that the Epinio UI displays the new Epinio Chart version by setting `epinio-ui.epinioVersion` in `helm-charts/chart/epinio/values.yaml`
-        - label: >
-            **( 📝 Manual step )** Check the `epinio/helm-charts` pull requests for the latest update, then merge the PR.
+            **( 📝 Manual step )** Check the `epinio/helm-charts` pull requests for the latest updates. 
+            Update the version of the Chart.yaml accordingly (if you want to create a RELEASE CANDIDATE add the `-rc` suffix)
+            Merge the PR.
             [LINK](https://github.com/epinio/helm-charts/pulls?q=is%3Apr+author%3Aapp%2Fgithub-actions)
         - label: >
             **( 📝 Manual step )** Run the `epinio/helm-charts` release action to publish the latest chart.
             [LINK](https://github.com/epinio/helm-charts/actions/workflows/release.yml)
         - label: >
             **( 📝 Manual step )** Check that the publication of the chart triggered the `epinio/helm-charts`
-            epinio docker action to generate a docker image for deploying the latest chart.
+            epinio docker action to generate a docker image for deploying the latest `epiniod` image.
             [LINK](https://github.com/epinio/helm-charts/actions/workflows/build-epiniod.yml)
             Trigger manually if needed. Check that the resulting docker image is available in `ghcr.io`, with
-            the chosen tags.
+            the chosen tags [LINK](https://github.com/epinio/helm-charts/pkgs/container/epiniod).
+
+  - type: checkboxes
+    id: release-checklist
+    attributes:
+      label: Release
+      options:
+        - label: >
+            **( 📝 Manual step )** Edit the latest draft release, then publish the release.
+            [LINK](https://github.com/epinio/epinio/releases)
+        - label: >
+            Check the release published action.
+            [LINK](https://github.com/epinio/epinio/actions/workflows/release-publish.yml)
+        - label: >
+            Check that the `Homebrew/homebrew-core` has an open (or already closed) PR with the latest Epinio version.
+            [LINK](https://github.com/Homebrew/homebrew-core/pulls?q=is%3Apr+epinio)
 
   - type: checkboxes
     id: docs-checklist
@@ -73,5 +123,12 @@ body:
       label: Others
       options:
         - label: >
-            **( 📝 Manual step )** Bump the helm chart versions in `epinio/extension-docker-desktop` by creating a pull requests, then merge the PR and create a new tag.
-            [LINK](https://github.com/epinio/extension-docker-desktop/actions/workflows/image.yml)
+            **( 📝 Manual step )** Docker Extension: check the `epinio/extension-docker-desktop` pull requests for the latest update, then merge the PR.
+            [LINK](https://github.com/epinio/extension-docker-desktop/pulls)
+            Tag the repository with the next version. [LINK](https://github.com/epinio/extension-docker-desktop/tags)
+            Check the result of the action. [LINK](https://github.com/epinio/extension-docker-desktop/actions/workflows/image.yml)
+        - label: >
+            CIVO marketplace: check that the `civo/kubernetes-marketplace` has an open (or already closed) PR with the latest Epinio version.
+            [LINK](https://github.com/civo/kubernetes-marketplace/pulls?q=is%3Apr+epinio)
+        - label: >
+            **( 📝 Manual step )** [optional] Rancher marketplace: open a PR in the [Rancher Helm Chart repository](https://github.com/rancher/charts)

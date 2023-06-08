@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package cli
 
 import (
@@ -40,6 +51,14 @@ func init() {
 	CmdAppCreate.Flags().String("app-chart", "", "App chart to use for deployment")
 	CmdAppUpdate.Flags().String("app-chart", "", "App chart to use for deployment")
 
+	err := CmdAppCreate.RegisterFlagCompletionFunc("app-chart", matchingChartFinder)
+	checkErr(err)
+	err = CmdAppUpdate.RegisterFlagCompletionFunc("app-chart", matchingChartFinder)
+	checkErr(err)
+
+	CmdAppDelete.Flags().Bool("all", false, "Delete all applications")
+	CmdAppRestage.Flags().Bool("no-restart", false, "Do not restart application after restaging")
+
 	CmdApp.AddCommand(CmdAppCreate)
 	CmdApp.AddCommand(CmdAppChart) // See chart.go for implementation
 	CmdApp.AddCommand(CmdAppEnv)   // See env.go for implementation
@@ -52,8 +71,8 @@ func init() {
 	CmdApp.AddCommand(CmdAppShow)
 	CmdApp.AddCommand(CmdAppExport)
 	CmdApp.AddCommand(CmdAppUpdate)
-	CmdApp.AddCommand(CmdAppDelete)
-	CmdApp.AddCommand(CmdAppPush) // See push.go for implementation
+	CmdApp.AddCommand(CmdAppDelete) // See delete.go for implementation
+	CmdApp.AddCommand(CmdAppPush)   // See push.go for implementation
 	CmdApp.AddCommand(CmdAppRestart)
 	CmdApp.AddCommand(CmdAppRestage)
 }
@@ -85,10 +104,9 @@ var CmdAppList = &cobra.Command{
 
 // CmdAppCreate implements the command: epinio apps create
 var CmdAppCreate = &cobra.Command{
-	Use:               "create NAME",
-	Short:             "Create just the app, without creating a workload",
-	Args:              cobra.ExactArgs(1),
-	ValidArgsFunction: matchingAppsFinder,
+	Use:   "create NAME",
+	Short: "Create just the app, without creating a workload",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 
@@ -160,9 +178,10 @@ var CmdAppExport = &cobra.Command{
 
 // CmdAppLogs implements the command: epinio apps logs
 var CmdAppLogs = &cobra.Command{
-	Use:   "logs NAME",
-	Short: "Streams the logs of the application",
-	Args:  cobra.ExactArgs(1),
+	Use:               "logs NAME",
+	Short:             "Streams the logs of the application",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: matchingAppsFinder,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 
@@ -197,9 +216,10 @@ var CmdAppLogs = &cobra.Command{
 
 // CmdAppExec implements the command: epinio apps exec
 var CmdAppExec = &cobra.Command{
-	Use:   "exec NAME",
-	Short: "creates a shell to the application",
-	Args:  cobra.ExactArgs(1),
+	Use:               "exec NAME",
+	Short:             "creates a shell to the application",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: matchingAppsFinder,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 
@@ -227,9 +247,10 @@ var (
 
 // CmdAppPortForward implements the command: epinio apps port-forward
 var CmdAppPortForward = &cobra.Command{
-	Use:   "port-forward NAME [LOCAL_PORT:]REMOTE_PORT [...[LOCAL_PORT_N:]REMOTE_PORT_N]",
-	Short: "forward one or more local ports to a pod",
-	Args:  cobra.MinimumNArgs(2),
+	Use:               "port-forward NAME [LOCAL_PORT:]REMOTE_PORT [...[LOCAL_PORT_N:]REMOTE_PORT_N]",
+	Short:             "forward one or more local ports to a pod",
+	Args:              cobra.MinimumNArgs(2),
+	ValidArgsFunction: matchingAppsFinder,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 
@@ -327,7 +348,7 @@ var CmdAppRestart = &cobra.Command{
 // CmdAppRestage implements the command: epinio app restage
 var CmdAppRestage = &cobra.Command{
 	Use:               "restage NAME",
-	Short:             "Restage the application",
+	Short:             "Restage the application, then restart, if running and not suppressed",
 	Args:              cobra.ExactArgs(1),
 	ValidArgsFunction: matchingAppsFinder,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -338,7 +359,13 @@ var CmdAppRestage = &cobra.Command{
 			return errors.Wrap(err, "error initializing cli")
 		}
 
-		err = client.AppRestage(args[0])
+		norestart, err := cmd.Flags().GetBool("no-restart")
+		if err != nil {
+			return errors.Wrap(err, "error reading option --no-restart")
+		}
+		restart := !norestart
+
+		err = client.AppRestage(args[0], restart)
 		// Note: errors.Wrap (nil, "...") == nil
 		return errors.Wrap(err, "error restaging app")
 	},

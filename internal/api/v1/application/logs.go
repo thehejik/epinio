@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package application
 
 import (
@@ -26,7 +37,7 @@ import (
 // It arranges for the logs of the specified application to be
 // streamed over a websocket. Dependent on the endpoint this may be
 // either regular logs, or the app's staging logs.
-func (hc Controller) Logs(c *gin.Context) {
+func Logs(c *gin.Context) {
 	ctx := c.Request.Context()
 	log := requestctx.Logger(ctx)
 
@@ -85,7 +96,7 @@ func (hc Controller) Logs(c *gin.Context) {
 	log.Info("streaming mode", "follow", follow)
 	log.Info("streaming begin")
 
-	err = hc.streamPodLogs(ctx, conn, namespace, appName, stageID, cluster, follow)
+	err = streamPodLogs(ctx, conn, namespace, appName, stageID, cluster, follow)
 	if err != nil {
 		log.V(1).Error(err, "error occurred after upgrading the websockets connection")
 		return
@@ -109,7 +120,7 @@ func (hc Controller) Logs(c *gin.Context) {
 // connection is closed. In any case it will call the cancel func that will stop
 // all the children go routines described above and then will wait for their parent
 // go routine to stop too (using another WaitGroup).
-func (hc Controller) streamPodLogs(ctx context.Context, conn *websocket.Conn, namespaceName, appName, stageID string, cluster *kubernetes.Cluster, follow bool) error {
+func streamPodLogs(ctx context.Context, conn *websocket.Conn, namespaceName, appName, stageID string, cluster *kubernetes.Cluster, follow bool) error {
 	logger := requestctx.Logger(ctx).WithName("streamer-to-websockets").V(1)
 	logChan := make(chan tailer.ContainerLogLine)
 	logCtx, logCancelFunc := context.WithCancel(ctx)
@@ -144,6 +155,8 @@ func (hc Controller) streamPodLogs(ctx context.Context, conn *websocket.Conn, na
 	// Send logs received on logChan to the websockets connection until either
 	// logChan is closed or websocket connection is closed.
 	for logLine := range logChan {
+		logger.Info("streaming", "log line", logLine)
+
 		msg, err := json.Marshal(logLine)
 		if err != nil {
 			return err

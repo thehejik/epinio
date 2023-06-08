@@ -1,6 +1,19 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package models
 
 import (
+	"errors"
+
 	"github.com/epinio/epinio/internal/names"
 )
 
@@ -15,13 +28,48 @@ const (
 	ApplicationStaging = "staging"
 	ApplicationRunning = "running"
 	ApplicationError   = "error"
+
+	ApplicationStagingActive = "active"
+	ApplicationStagingDone   = "done"
+	ApplicationStagingFailed = "failed"
 )
 
+type GitProvider string
+
+const (
+	ProviderGit              = GitProvider("git")
+	ProviderGithub           = GitProvider("github")
+	ProviderGithubEnterprise = GitProvider("github_enterprise")
+	ProviderGitlab           = GitProvider("gitlab")
+	ProviderGitlabEnterprise = GitProvider("gitlab_enterprise")
+	ProviderUnknown          = GitProvider("unknown")
+)
+
+var ValidProviders = []GitProvider{
+	ProviderGit,
+	ProviderGithub,
+	ProviderGithubEnterprise,
+	ProviderGitlab,
+	ProviderGitlabEnterprise,
+}
+
+func GitProviderFromString(provider string) (GitProvider, error) {
+	for _, candidate := range ValidProviders {
+		if string(candidate) == provider {
+			return candidate, nil
+		}
+	}
+	return ProviderUnknown, errors.New("unknown provider")
+}
+
 type ApplicationStatus string
+type ApplicationStagingStatus string
 
 type GitRef struct {
-	Revision string `json:"revision,omitempty" yaml:"revision,omitempty"`
-	URL      string `json:"repository"         yaml:"url"`
+	Revision string      `json:"revision,omitempty" yaml:"revision,omitempty"`
+	URL      string      `json:"repository"         yaml:"url,omitempty"`
+	Provider GitProvider `json:"provider,omitempty" yaml:"provider,omitempty"`
+	Branch   string      `json:"branch,omitempty"   yaml:"branch,omitempty"`
 }
 
 // App has all the application's properties, for at rest (Configuration), and active (Workload).
@@ -34,6 +82,8 @@ type App struct {
 	Configuration ApplicationUpdateRequest `json:"configuration"`
 	Origin        ApplicationOrigin        `json:"origin"`
 	Workload      *AppDeployment           `json:"deployment,omitempty"`
+	Staging       ApplicationStage         `json:"staging,omitempty"`
+	StagingStatus ApplicationStagingStatus `json:"stagingstatus"`
 	Status        ApplicationStatus        `json:"status"`
 	StatusMessage string                   `json:"statusmessage"`
 	StageID       string                   `json:"stage_id,omitempty"` // staging id, last run
@@ -42,6 +92,7 @@ type App struct {
 
 type PodInfo struct {
 	Name        string `json:"name"`
+	MetricsOk   bool   `json:"metricsOk"`
 	MemoryBytes int64  `json:"memoryBytes"`
 	MilliCPUs   int64  `json:"millicpus"`
 	CreatedAt   string `json:"createdAt,omitempty"`

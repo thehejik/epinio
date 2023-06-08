@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 // Package usercmd provides Epinio CLI commands for users
 package usercmd
 
@@ -5,11 +16,13 @@ package usercmd
 
 import (
 	"context"
+	"runtime"
 
 	"github.com/epinio/epinio/helpers/kubernetes/tailer"
 	"github.com/epinio/epinio/helpers/termui"
 	"github.com/epinio/epinio/helpers/tracelog"
 	"github.com/epinio/epinio/internal/cli/settings"
+	"github.com/epinio/epinio/internal/selfupdater"
 	epinioapi "github.com/epinio/epinio/pkg/api/core/v1/client"
 	"github.com/epinio/epinio/pkg/api/core/v1/models"
 	"github.com/pkg/errors"
@@ -25,6 +38,7 @@ type EpinioClient struct {
 	Log      logr.Logger
 	ui       *termui.UI
 	API      APIClient
+	Updater  selfupdater.Updater
 }
 
 //counterfeiter:generate . APIClient
@@ -45,7 +59,7 @@ type APIClient interface {
 	AppLogs(namespace, appName, stageID string, follow bool, callback func(tailer.ContainerLogLine)) error
 	StagingComplete(namespace string, id string) (models.Response, error)
 	AppRunning(app models.AppRef) (models.Response, error)
-	AppExec(namespace string, appName, instance string, tty kubectlterm.TTY) error
+	AppExec(ctx context.Context, namespace string, appName, instance string, tty kubectlterm.TTY) error
 	AppPortForward(namespace string, appName, instance string, opts *epinioapi.PortForwardOpts) error
 	AppRestart(namespace string, appName string) error
 	AppGetPart(namespace, appName, part, destinationPath string) error
@@ -64,7 +78,7 @@ type APIClient interface {
 
 	// namespaces
 	NamespaceCreate(req models.NamespaceCreateRequest) (models.Response, error)
-	NamespaceDelete(namespace string) (models.Response, error)
+	NamespaceDelete(namespaces []string) (models.Response, error)
 	NamespaceShow(namespace string) (models.Namespace, error)
 	NamespacesMatch(prefix string) (models.NamespacesMatchResponse, error)
 	Namespaces() (models.NamespaceList, error)
@@ -122,10 +136,34 @@ func NewEpinioClient(cfg *settings.Settings, apiClient APIClient) (*EpinioClient
 	log.Info("Ingress API", "url", cfg.API)
 	log.Info("Settings API", "url", cfg.API)
 
+	updater, err := getUpdater(runtime.GOOS)
+	if err != nil {
+		return nil, errors.Wrap(err, "getting updater")
+	}
+
 	return &EpinioClient{
 		API:      apiClient,
 		ui:       termui.NewUI(),
 		Settings: cfg,
 		Log:      logger,
+		Updater:  updater,
 	}, nil
+}
+
+func (cli *EpinioClient) UI() *termui.UI {
+	return cli.ui
+}
+
+func getUpdater(os string) (selfupdater.Updater, error) {
+	var updater selfupdater.Updater
+	switch os {
+	case "linux", "darwin":
+		updater = selfupdater.PosixUpdater{}
+	case "windows":
+		updater = selfupdater.WindowsUpdater{}
+	default:
+		return nil, errors.New("unknown operating system")
+	}
+
+	return updater, nil
 }

@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 // Package server provides the Epinio http server
 package server
 
@@ -93,8 +104,21 @@ func NewHandler(logger logr.Logger) (*gin.Engine, error) {
 		initContextMiddleware(logger),
 	)
 
-	err := auth.ExtendLocalTrustFromFile("/etc/ssl/certs/dex-tls.pem")
-	if err != nil {
+	// Dex or no dex ?
+
+	dexPEMPath := "/etc/ssl/certs/dex-tls.pem"
+
+	if _, err := os.Stat(dexPEMPath); err == nil {
+		// dex secret is present, load contained cert
+
+		err := auth.ExtendLocalTrustFromFile(dexPEMPath)
+		if err != nil {
+			return nil, errors.Wrap(err, "extending local trust with dex")
+		}
+	} else if errors.Is(err, os.ErrNotExist) {
+		// No dex secret/file, do nothing
+	} else {
+		// Some other Stat error, report
 		return nil, errors.Wrap(err, "extending local trust with dex")
 	}
 

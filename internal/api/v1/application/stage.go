@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package application
 
 import (
@@ -37,6 +48,7 @@ type stageParam struct {
 	BuilderImage        string
 	DownloadImage       string
 	UnpackImage         string
+	ServiceAccountName  string
 	Environment         models.EnvVariableList
 	Owner               metav1.OwnerReference
 	RegistryURL         string
@@ -92,7 +104,7 @@ func ensurePVC(ctx context.Context, cluster *kubernetes.Cluster, ar models.AppRe
 
 // Stage handles the API endpoint /namespaces/:namespace/applications/:app/stage
 // It creates a Job resource to stage the app
-func (hc Controller) Stage(c *gin.Context) apierror.APIErrors {
+func Stage(c *gin.Context) apierror.APIErrors {
 	ctx := c.Request.Context()
 	log := requestctx.Logger(ctx)
 
@@ -145,7 +157,7 @@ func (hc Controller) Stage(c *gin.Context) apierror.APIErrors {
 
 	log.Info("staging app", "namespace", namespace, "app", req)
 
-	staging, err := application.CurrentlyStaging(ctx, cluster, req.App.Namespace, req.App.Name)
+	staging, err := application.IsCurrentlyStaging(ctx, cluster, req.App.Namespace, req.App.Name)
 	if err != nil {
 		return apierror.InternalError(err)
 	}
@@ -207,11 +219,14 @@ func (hc Controller) Stage(c *gin.Context) apierror.APIErrors {
 		}
 	}
 
+	serviceAccountName := viper.GetString("staging-service-account-name")
+
 	params := stageParam{
 		AppRef:              req.App,
 		BuilderImage:        builderImage,
 		DownloadImage:       downloadImage,
 		UnpackImage:         unpackImage,
+		ServiceAccountName:  serviceAccountName,
 		BlobUID:             blobUID,
 		Environment:         environment.List(),
 		Owner:               owner,
@@ -259,7 +274,7 @@ func (hc Controller) Stage(c *gin.Context) apierror.APIErrors {
 
 // Staged handles the API endpoint /namespaces/:namespace/staging/:stage_id/complete
 // It waits for the Job resource staging the app to complete
-func (hc Controller) Staged(c *gin.Context) apierror.APIErrors {
+func Staged(c *gin.Context) apierror.APIErrors {
 	ctx := c.Request.Context()
 
 	namespace := c.Param("namespace")
@@ -349,11 +364,6 @@ func newJobRun(app stageParam) (*batchv1.Job, *corev1.Secret) {
 	previous := app
 	previous.Stage = models.NewStage(app.PreviousStageID)
 
-	protocol := "http"
-	if app.S3ConnectionDetails.UseSSL {
-		protocol = "https"
-	}
-
 	// TODO: Simplify env setup -- https://github.com/epinio/epinio/issues/1176
 
 	// Note: `source` is required because the mounted files are not executable.
@@ -368,39 +378,21 @@ func newJobRun(app stageParam) (*batchv1.Job, *corev1.Secret) {
 	buildpackScript := fmt.Sprintf(`source /stage-support/%s`, helmchart.EpinioStageBuild)
 
 	// build configuration
-	stageEnv := []corev1.EnvVar{
-		{
-			Name:  "PROTOCOL",
-			Value: protocol,
-		},
-		{
-			Name:  "ENDPOINT",
-			Value: app.S3ConnectionDetails.Endpoint,
-		},
-		{
-			Name:  "BUCKET",
-			Value: app.S3ConnectionDetails.Bucket,
-		},
-		{
-			Name:  "BLOBID",
-			Value: app.BlobUID,
-		},
-		{
-			Name:  "PREIMAGE",
-			Value: previous.ImageURL(previous.RegistryURL),
-		},
-		{
-			Name:  "APPIMAGE",
-			Value: app.ImageURL(app.RegistryURL),
-		},
+	stageEnv := []corev1.EnvVar{}
+
+	protocol := "http"
+	if app.S3ConnectionDetails.UseSSL {
+		protocol = "https"
 	}
+	stageEnv = appendEnvVar(stageEnv, "PROTOCOL", protocol)
+
+	stageEnv = appendEnvVar(stageEnv, "ENDPOINT", app.S3ConnectionDetails.Endpoint)
+	stageEnv = appendEnvVar(stageEnv, "BUCKET", app.S3ConnectionDetails.Bucket)
+	stageEnv = appendEnvVar(stageEnv, "BLOBID", app.BlobUID)
+	stageEnv = appendEnvVar(stageEnv, "PREIMAGE", previous.ImageURL(previous.RegistryURL))
+	stageEnv = appendEnvVar(stageEnv, "APPIMAGE", app.ImageURL(app.RegistryURL))
 
 	volumeMounts := []corev1.VolumeMount{
-		{
-			Name:      "s3-creds",
-			MountPath: "/root/.aws",
-			ReadOnly:  true,
-		},
 		{
 			Name:      "source",
 			SubPath:   "source",
@@ -427,9 +419,13 @@ func newJobRun(app stageParam) (*batchv1.Job, *corev1.Secret) {
 		},
 	}
 
-	cacheClaim := &corev1.PersistentVolumeClaimVolumeSource{
-		ClaimName: app.MakePVCName(),
-		ReadOnly:  false,
+	// mount AWS credentials secret only if the credentials are provided
+	if app.S3ConnectionDetails.AccessKeyID != "" && app.S3ConnectionDetails.SecretAccessKey != "" {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "s3-creds",
+			MountPath: "/root/.aws",
+			ReadOnly:  true,
+		})
 	}
 
 	volumes := []corev1.Volume{
@@ -457,7 +453,10 @@ func newJobRun(app stageParam) (*batchv1.Job, *corev1.Secret) {
 		{
 			Name: "cache",
 			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: cacheClaim,
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: app.MakePVCName(),
+					ReadOnly:  false,
+				},
 			},
 		},
 		{
@@ -558,6 +557,7 @@ func newJobRun(app stageParam) (*batchv1.Job, *corev1.Secret) {
 					},
 				},
 				Spec: corev1.PodSpec{
+					ServiceAccountName: app.ServiceAccountName,
 					InitContainers: []corev1.Container{
 						{
 							Name:         "download-s3-blob",
@@ -775,4 +775,8 @@ func mountRegistryCerts(app stageParam, volumes []corev1.Volume, volumeMounts []
 	}
 
 	return volumes, volumeMounts
+}
+
+func appendEnvVar(envs []corev1.EnvVar, name, value string) []corev1.EnvVar {
+	return append(envs, corev1.EnvVar{Name: name, Value: value})
 }

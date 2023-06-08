@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package v1_test
 
 import (
@@ -16,6 +27,7 @@ import (
 	"github.com/epinio/epinio/acceptance/testenv"
 	v1 "github.com/epinio/epinio/internal/api/v1"
 	"github.com/epinio/epinio/internal/names"
+	cerr "github.com/epinio/epinio/pkg/api/core/v1/errors"
 	"github.com/epinio/epinio/pkg/api/core/v1/models"
 	"github.com/pkg/errors"
 
@@ -114,7 +126,7 @@ func deployApplication(appName, namespace string, request models.DeployRequest) 
 	return *deploy
 }
 
-func deployApplicationWithFailure(appName, namespace string, request models.DeployRequest) models.DeployResponse {
+func deployApplicationWithFailure(appName, namespace string, request models.DeployRequest) cerr.ErrorResponse {
 	response := deployApplicationRequest(appName, namespace, request)
 	defer response.Body.Close()
 
@@ -122,11 +134,11 @@ func deployApplicationWithFailure(appName, namespace string, request models.Depl
 	Expect(err).ToNot(HaveOccurred())
 	Expect(response.StatusCode).To(Equal(http.StatusBadRequest), string(bodyBytes))
 
-	deploy := &models.DeployResponse{}
-	err = json.Unmarshal(bodyBytes, deploy)
+	message := cerr.ErrorResponse{}
+	err = json.Unmarshal(bodyBytes, &message)
 	Expect(err).NotTo(HaveOccurred())
 
-	return *deploy
+	return message
 }
 
 func deployApplicationRequest(appName, namespace string, request models.DeployRequest) *http.Response {

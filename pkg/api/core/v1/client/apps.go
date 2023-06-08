@@ -1,6 +1,18 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -555,7 +567,7 @@ func (c *Client) AppRunning(app models.AppRef) (models.Response, error) {
 	return resp, nil
 }
 
-func (c *Client) AppExec(namespace string, appName, instance string, tty kubectlterm.TTY) error {
+func (c *Client) AppExec(ctx context.Context, namespace string, appName, instance string, tty kubectlterm.TTY) error {
 	endpoint := fmt.Sprintf("%s%s/%s",
 		c.Settings.API, api.WsRoot, api.WsRoutes.Path("AppExec", namespace, appName))
 
@@ -594,7 +606,7 @@ func (c *Client) AppExec(namespace string, appName, instance string, tty kubectl
 			TerminalSizeQueue: tty.MonitorSize(tty.GetSize()),
 		}
 
-		return exec.Stream(options)
+		return exec.StreamWithContext(ctx, options)
 	}
 
 	return tty.Safe(fn)

@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package application
 
 import (
@@ -22,7 +33,7 @@ const (
 // Deploy handles the API endpoint /namespaces/:namespace/applications/:app/deploy
 // It uses an application chart to create the deployment, configuration and ingress (kube)
 // resources for the app.
-func (hc Controller) Deploy(c *gin.Context) apierror.APIErrors {
+func Deploy(c *gin.Context) apierror.APIErrors {
 	ctx := c.Request.Context()
 
 	namespace := c.Param("namespace")
@@ -39,6 +50,14 @@ func (hc Controller) Deploy(c *gin.Context) apierror.APIErrors {
 	}
 	if namespace != req.App.Namespace {
 		return apierror.NewBadRequestError("namespace parameter from URL does not match namespace param in body")
+	}
+
+	// validate provider reference, if actually present (git origin, and specified)
+	if req.Origin.Git != nil && req.Origin.Git.Provider != "" {
+		_, err := models.GitProviderFromString(string(req.Origin.Git.Provider))
+		if err != nil {
+			return apierror.NewBadRequestErrorf("bad git provider `%s`", req.Origin.Git.Provider)
+		}
 	}
 
 	cluster, err := kubernetes.GetCluster(ctx)

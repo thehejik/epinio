@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 // Package configurations encapsulates all the functionality around Epinio configurations
 // A Configuration is essentially a Secret with some Epinio specific labels.
 // This allows us to use any Secret as a Configuration as long as someone labels
@@ -14,7 +25,6 @@ import (
 	"reflect"
 
 	"github.com/epinio/epinio/helpers/kubernetes"
-	epinioerrors "github.com/epinio/epinio/internal/errors"
 	"github.com/epinio/epinio/internal/names"
 	"github.com/epinio/epinio/internal/namespaces"
 	"github.com/epinio/epinio/pkg/api/core/v1/models"
@@ -73,15 +83,11 @@ func Lookup(ctx context.Context, kubeClient *kubernetes.Cluster, namespace, conf
 func List(ctx context.Context, cluster *kubernetes.Cluster, namespace string) (ConfigurationList, error) {
 	// Verify namespace, if specified
 	if namespace != "" {
-		exists, err := namespaces.Exists(ctx, cluster, namespace)
+		_, err := namespaces.Exists(ctx, cluster, namespace)
 		if err != nil {
 			return ConfigurationList{}, err
 		}
-		if !exists {
-			return ConfigurationList{}, epinioerrors.NamespaceMissingError{
-				Namespace: namespace,
-			}
-		}
+		// if !exists - Is handled by `NamespaceMiddleware`.
 	}
 
 	secretSelector := labels.Set(map[string]string{
@@ -293,24 +299,34 @@ func forService(ctx context.Context, kubeClient *kubernetes.Cluster, service *mo
 // LabelServiceSecrets will look for the Opaque secrets released with a service, looking for the
 // app.kubernetes.io/instance label, then it will add the Configuration labels to "create" the configurations
 func LabelServiceSecrets(ctx context.Context, kubeClient *kubernetes.Cluster, service *models.Service) ([]v1.Secret, error) {
-	// Simplification - Get the secrets to handle via the helper above.
-	filteredSecrets, err := ForServiceUnlabeled(ctx, kubeClient, service)
+	var filteredSecrets []v1.Secret
+
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		// Simplification - Get the secrets to handle via the helper above.
+		filteredSecretsLocal, err := ForServiceUnlabeled(ctx, kubeClient, service)
+		if err != nil {
+			return err
+		}
+
+		for _, secret := range filteredSecretsLocal {
+			sec := secret
+
+			// set labels without overriding the old ones
+			sec.GetLabels()[ConfigurationLabelKey] = "true"
+			sec.GetLabels()[ConfigurationTypeLabelKey] = "service"
+			sec.GetLabels()[ConfigurationOriginLabelKey] = service.Meta.Name
+
+			_, err = kubeClient.Kubectl.CoreV1().Secrets(service.Meta.Namespace).Update(ctx, &sec, metav1.UpdateOptions{})
+			if err != nil {
+				return err
+			}
+		}
+
+		filteredSecrets = filteredSecretsLocal
+		return nil
+	})
 	if err != nil {
 		return nil, err
-	}
-
-	for _, secret := range filteredSecrets {
-		sec := secret
-
-		// set labels without overriding the old ones
-		sec.GetLabels()[ConfigurationLabelKey] = "true"
-		sec.GetLabels()[ConfigurationTypeLabelKey] = "service"
-		sec.GetLabels()[ConfigurationOriginLabelKey] = service.Meta.Name
-
-		_, err = kubeClient.Kubectl.CoreV1().Secrets(service.Meta.Namespace).Update(ctx, &sec, metav1.UpdateOptions{})
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return filteredSecrets, nil

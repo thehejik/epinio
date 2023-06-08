@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package application
 
 // Validate the custom chart values saved in the application CR against the declarations made by the
@@ -17,7 +28,7 @@ import (
 // ValidateChartValues handles the API endpoint /namespaces/:namespace/applications/:app/validate-cv
 // Given application by name, and namespace the custom chart values are checked against the
 // declarations in the referenced appchart.
-func (hc Controller) ValidateChartValues(c *gin.Context) apierror.APIErrors {
+func ValidateChartValues(c *gin.Context) apierror.APIErrors {
 	ctx := c.Request.Context()
 
 	namespace := c.Param("namespace")

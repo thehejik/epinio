@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package services
 
 import (
@@ -14,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
 	helmapiv1 "github.com/k3s-io/helm-controller/pkg/apis/helm.cattle.io/v1"
 	helmdriver "helm.sh/helm/v3/pkg/storage/driver"
@@ -61,6 +73,12 @@ func (s *ServiceClient) Get(ctx context.Context, namespace, name string) (*model
 		secretTypes = strings.Split(secretTypesAnnotationValue, ",")
 	}
 
+	serviceInterface := s.kubeClient.Kubectl.CoreV1().Services(namespace)
+	internalRoutes, err := GetInternalRoutes(ctx, serviceInterface, name)
+	if err != nil {
+		return nil, errors.Wrap(err, "fetching the services")
+	}
+
 	service = models.Service{
 		Meta: models.Meta{
 			Name:      name,
@@ -70,6 +88,7 @@ func (s *ServiceClient) Get(ctx context.Context, namespace, name string) (*model
 		SecretTypes:           secretTypes,
 		CatalogService:        fmt.Sprintf("%s%s", catalogServicePrefix, catalogServiceName),
 		CatalogServiceVersion: catalogServiceVersion,
+		InternalRoutes:        internalRoutes,
 	}
 
 	logger := tracelog.NewLogger().WithName("ServiceStatus")
@@ -87,7 +106,30 @@ func (s *ServiceClient) Get(ctx context.Context, namespace, name string) (*model
 	return &service, nil
 }
 
-func (s *ServiceClient) Create(ctx context.Context, namespace, name string, catalogService models.CatalogService) error {
+// GetInternalRoutes returns the internal routes of the service, finding them from the kubernetes services of the Helm release
+func GetInternalRoutes(ctx context.Context, servicesGetter v1.ServiceInterface, name string) ([]string, error) {
+	servicesList, err := servicesGetter.List(ctx, metav1.ListOptions{
+		LabelSelector: "app.kubernetes.io/instance=" + names.ServiceReleaseName(name),
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "fetching the services")
+	}
+
+	internalRoutes := []string{}
+	for _, s := range servicesList.Items {
+		for _, port := range s.Spec.Ports {
+			route := fmt.Sprintf("%s.%s.svc.cluster.local", s.Name, s.Namespace)
+			if port.Port != 80 {
+				route += fmt.Sprintf(":%d", port.Port)
+			}
+			internalRoutes = append(internalRoutes, route)
+		}
+	}
+
+	return internalRoutes, nil
+}
+
+func (s *ServiceClient) Create(ctx context.Context, namespace, name string, wait bool, catalogService models.CatalogService) error {
 	// Resources, and names
 	//
 	// |Kind	|Name		|Notes			|
@@ -124,6 +166,7 @@ func (s *ServiceClient) Create(ctx context.Context, namespace, name string, cata
 			Version:    catalogService.ChartVersion,
 			Repository: catalogService.HelmRepo.URL,
 			Values:     catalogService.Values,
+			Wait:       wait,
 		})
 
 	if err != nil {

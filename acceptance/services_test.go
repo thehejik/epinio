@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package acceptance_test
 
 import (
@@ -14,7 +25,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-const mysqlVersion = "8.0.29" // Doesn't change too often
+const mysqlVersion = "8.0.31" // Doesn't change too often
 
 var _ = Describe("Services", LService, func() {
 	var catalogService models.CatalogService
@@ -102,6 +113,26 @@ var _ = Describe("Services", LService, func() {
 				)
 			})
 		})
+
+		Context("command completion", func() {
+			It("matches empty prefix", func() {
+				out, err := env.Epinio("", "__complete", "service", "catalog", "")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).To(ContainSubstring(catalogService.Meta.Name))
+			})
+
+			It("does not match unknown prefix", func() {
+				out, err := env.Epinio("", "__complete", "service", "catalog", "bogus")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).ToNot(ContainSubstring("bogus"))
+			})
+
+			It("does not match bogus arguments", func() {
+				out, err := env.Epinio("", "__complete", "service", "catalog", catalogService.Meta.Name, "")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).ToNot(ContainSubstring(catalogService.Meta.Name))
+			})
+		})
 	})
 
 	deleteServiceFromNamespace := func(namespace, service string) {
@@ -144,8 +175,29 @@ var _ = Describe("Services", LService, func() {
 					WithRow("Catalog Service", catalogService.Meta.Name),
 					WithRow("Version", catalogService.AppVersion),
 					WithRow("Status", "deployed"),
+					WithRow("Internal Routes", fmt.Sprintf(`.*\.%s\.svc\.cluster\.local`, namespace)),
 				),
 			)
+		})
+
+		Context("command completion", func() {
+			It("matches empty prefix", func() {
+				out, err := env.Epinio("", "__complete", "service", "show", "")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).To(ContainSubstring(service))
+			})
+
+			It("does not match unknown prefix", func() {
+				out, err := env.Epinio("", "__complete", "service", "show", "bogus")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).ToNot(ContainSubstring("bogus"))
+			})
+
+			It("does not match bogus arguments", func() {
+				out, err := env.Epinio("", "__complete", "service", "show", service, "")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).ToNot(ContainSubstring(service))
+			})
 		})
 	})
 
@@ -175,7 +227,7 @@ var _ = Describe("Services", LService, func() {
 			Expect(err).ToNot(HaveOccurred(), out)
 
 			Expect(out).To(ContainSubstring("Listing Services"))
-			Expect(out).To(ContainSubstring("Namespace: " + namespace))
+			Expect(out).To(ContainSubstring("Namespace: %s", namespace))
 
 			Expect(out).To(
 				HaveATable(
@@ -399,6 +451,7 @@ var _ = Describe("Services", LService, func() {
 					WithRow("Created", WithDate()),
 					WithRow("Catalog Service", catalogService.Meta.Name),
 					WithRow("Status", "(not-ready|deployed)"),
+					WithRow("Internal Routes", fmt.Sprintf(`.*\.%s\.svc\.cluster\.local`, namespace)),
 				),
 			)
 
@@ -414,6 +467,33 @@ var _ = Describe("Services", LService, func() {
 			)
 
 			By(fmt.Sprintf("%s/%s up", namespace, service))
+		})
+
+		Context("command completion", func() {
+			// A service is not really required, except the outer AfterEach expects it.
+			BeforeEach(func() {
+				out, err := env.Epinio("", "service", "create", catalogService.Meta.Name, service)
+				Expect(err).ToNot(HaveOccurred(), out)
+			})
+			// Outer AfterEach removes it
+
+			It("matches empty prefix", func() {
+				out, err := env.Epinio("", "__complete", "service", "create", "")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).To(ContainSubstring(catalogService.Meta.Name))
+			})
+
+			It("does not match unknown prefix", func() {
+				out, err := env.Epinio("", "__complete", "service", "create", "bogus")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).ToNot(ContainSubstring("bogus"))
+			})
+
+			It("does not match bogus arguments", func() {
+				out, err := env.Epinio("", "__complete", "service", "create", catalogService.Meta.Name, "")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).ToNot(ContainSubstring(catalogService.Meta.Name))
+			})
 		})
 	})
 
@@ -441,6 +521,7 @@ var _ = Describe("Services", LService, func() {
 					WithRow("Created", WithDate()),
 					WithRow("Catalog Service", catalogService.Meta.Name),
 					WithRow("Status", "(not-ready|deployed)"),
+					WithRow("Internal Routes", fmt.Sprintf(`.*\.%s\.svc\.cluster\.local`, namespace)),
 				),
 			)
 
@@ -493,6 +574,25 @@ var _ = Describe("Services", LService, func() {
 					out, _ := env.Epinio("", "service", "show", service2)
 					return out
 				}, "1m", "5s").Should(ContainSubstring("service '%s' does not exist", service2))
+			})
+
+			It("does match for more than one service", func() {
+				out, err := env.Epinio("", "__complete", "service", "delete", "")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).To(ContainSubstring(service))
+				Expect(out).To(ContainSubstring(service2))
+			})
+
+			It("does match for more than one service but only the remaining one", func() {
+				out, err := env.Epinio("", "__complete", "service", "delete", service, "")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).ToNot(ContainSubstring(service))
+				Expect(out).To(ContainSubstring(service2))
+
+				out, err = env.Epinio("", "__complete", "service", "delete", service2, "")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).To(ContainSubstring(service))
+				Expect(out).ToNot(ContainSubstring(service2))
 			})
 		})
 
@@ -579,6 +679,26 @@ var _ = Describe("Services", LService, func() {
 					out, _ := env.Epinio("", "service", "delete", service)
 					return out
 				}, "1m", "5s").Should(ContainSubstring("service '%s' does not exist", service))
+			})
+		})
+
+		Context("command completion", func() {
+			It("matches empty prefix", func() {
+				out, err := env.Epinio("", "__complete", "service", "delete", "")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).To(ContainSubstring(service))
+			})
+
+			It("does not match unknown prefix", func() {
+				out, err := env.Epinio("", "__complete", "service", "delete", "bogus")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).ToNot(ContainSubstring("bogus"))
+			})
+
+			It("does match for more than one argument", func() {
+				out, err := env.Epinio("", "__complete", "service", "delete", "fake", "")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).To(ContainSubstring(service))
 			})
 		})
 	})
@@ -688,6 +808,39 @@ var _ = Describe("Services", LService, func() {
 				),
 			)
 		})
+
+		Context("command completion", func() {
+			It("matches empty service prefix", func() {
+				out, err := env.Epinio("", "__complete", "service", "bind", "")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).To(ContainSubstring(service))
+			})
+
+			It("matches empty app prefix", func() {
+				out, err := env.Epinio("", "__complete", "service", "bind", service, "")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).To(ContainSubstring(app))
+			})
+
+			It("does not match unknown service prefix", func() {
+				out, err := env.Epinio("", "__complete", "service", "bind", "bogus")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).ToNot(ContainSubstring("bogus"))
+			})
+
+			It("does not match unknown app prefix", func() {
+				out, err := env.Epinio("", "__complete", "service", "bind", service, "bogus")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).ToNot(ContainSubstring("bogus"))
+			})
+
+			It("does not match bogus arguments", func() {
+				out, err := env.Epinio("", "__complete", "service", "bind", service, app, "")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).ToNot(ContainSubstring(app))
+				Expect(out).ToNot(ContainSubstring(service))
+			})
+		})
 	})
 
 	Describe("Unbind", func() {
@@ -795,6 +948,46 @@ var _ = Describe("Services", LService, func() {
 					WithRow(namespace, service, WithDate(), "mysql-dev", mysqlVersion, "(not-ready|deployed)", ""),
 				),
 			)
+		})
+
+		Context("command completion", func() {
+			// Needed because the outer BeforeEach does binding, and the tests do not unbind
+			AfterEach(func() {
+				out, err := env.Epinio("", "service", "unbind", service, app)
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).ToNot(ContainSubstring("Available Commands:")) // Command should exist
+			})
+
+			It("matches empty service prefix", func() {
+				out, err := env.Epinio("", "__complete", "service", "unbind", "")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).To(ContainSubstring(service))
+			})
+
+			It("matches empty app prefix", func() {
+				out, err := env.Epinio("", "__complete", "service", "unbind", service, "")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).To(ContainSubstring(app))
+			})
+
+			It("does not match unknown service prefix", func() {
+				out, err := env.Epinio("", "__complete", "service", "unbind", "bogus")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).ToNot(ContainSubstring("bogus"))
+			})
+
+			It("does not match unknown app prefix", func() {
+				out, err := env.Epinio("", "__complete", "service", "unbind", service, "bogus")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).ToNot(ContainSubstring("bogus"))
+			})
+
+			It("does not match bogus arguments", func() {
+				out, err := env.Epinio("", "__complete", "service", "unbind", service, app, "")
+				Expect(err).ToNot(HaveOccurred(), out)
+				Expect(out).ToNot(ContainSubstring(app))
+				Expect(out).ToNot(ContainSubstring(service))
+			})
 		})
 	})
 })

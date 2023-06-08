@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package configuration
 
 import (
@@ -16,7 +27,7 @@ import (
 
 // Delete handles the API end point /namespaces/:namespace/configurations/:configuration (DELETE)
 // It deletes the named configuration
-func (sc Controller) Delete(c *gin.Context) apierror.APIErrors {
+func Delete(c *gin.Context) apierror.APIErrors {
 	ctx := c.Request.Context()
 	namespace := c.Param("namespace")
 
@@ -59,7 +70,8 @@ func (sc Controller) Delete(c *gin.Context) apierror.APIErrors {
 
 		if configuration.Origin != "" {
 			// [BELONG] keep in sync with same marker in the client
-			return apierror.NewBadRequestErrorf("Configuration belongs to service '%s', use service requests",
+			return apierror.NewBadRequestErrorf("Configuration '%s' belongs to service '%s', use service requests",
+				configuration.Name,
 				configuration.Origin)
 		}
 		configurationObjects = append(configurationObjects, configuration)

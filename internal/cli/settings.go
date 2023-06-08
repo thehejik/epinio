@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package cli
 
 import (
@@ -35,13 +46,17 @@ var CmdSettings = &cobra.Command{
 func init() {
 	flags := CmdSettingsUpdateCA.Flags()
 	flags.StringP("namespace", "n", "epinio", "(NAMESPACE) The namespace to use")
-	viper.BindPFlag("namespace", flags.Lookup("namespace"))
-	viper.BindEnv("namespace", "NAMESPACE")
+	err := viper.BindPFlag("namespace", flags.Lookup("namespace"))
+	checkErr(err)
+	err = viper.BindEnv("namespace", "NAMESPACE")
+	checkErr(err)
 
 	CmdSettingsShow.Flags().Bool("show-password", false, "Show hidden password")
-	viper.BindPFlag("show-password", CmdSettingsShow.Flags().Lookup("show-password"))
+	err = viper.BindPFlag("show-password", CmdSettingsShow.Flags().Lookup("show-password"))
+	checkErr(err)
 	CmdSettingsShow.Flags().Bool("show-token", false, "Show access token")
-	viper.BindPFlag("show-token", CmdSettingsShow.Flags().Lookup("show-token"))
+	err = viper.BindPFlag("show-token", CmdSettingsShow.Flags().Lookup("show-token"))
+	checkErr(err)
 
 	CmdSettings.AddCommand(CmdSettingsUpdateCA)
 	CmdSettings.AddCommand(CmdSettingsShow)

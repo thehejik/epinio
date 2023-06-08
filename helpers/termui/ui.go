@@ -1,9 +1,22 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package termui
 
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/fatih/color"
@@ -23,6 +36,7 @@ const (
 	note
 	success
 	progress
+	question
 )
 
 const (
@@ -39,6 +53,7 @@ const (
 // UI contains functionality for dealing with the user
 // on the CLI
 type UI struct {
+	output    io.Writer
 	verbosity int // Verbosity level for user messages.
 }
 
@@ -76,8 +91,20 @@ type Progress interface {
 // NewUI creates a new UI
 func NewUI() *UI {
 	return &UI{
+		output:    color.Output,
 		verbosity: verbosity(),
 	}
+}
+
+func (u *UI) Raw(message string) {
+	fmt.Fprintf(u.output, "%s", message)
+}
+
+func (u *UI) SetOutput(output io.Writer) {
+	if output == nil {
+		output = color.Output
+	}
+	u.output = output
 }
 
 // Progress creates, configures, and returns an active progress
@@ -108,6 +135,16 @@ func (u *UI) Exclamation() *Message {
 	return &Message{
 		ui:           u,
 		msgType:      exclamation,
+		interactions: []interaction{},
+		end:          -1,
+	}
+}
+
+// Question returns a UIMessage that prints a question. Best used with `WithAsk...` modifiers.
+func (u *UI) Question() *Message {
+	return &Message{
+		ui:           u,
+		msgType:      question,
 		interactions: []interaction{},
 		end:          -1,
 	}
@@ -177,6 +214,9 @@ func (u *Message) Msg(message string) {
 	}
 
 	switch u.msgType {
+	case question:
+		message = emoji.Sprintf(":question: %s", message)
+		message = color.RedString(message)
 	case normal:
 	case exclamation:
 		message = emoji.Sprintf(":warning: %s", message)
@@ -194,7 +234,7 @@ func (u *Message) Msg(message string) {
 		message = color.RedString(message)
 	}
 
-	fmt.Fprintf(color.Output, "%s", message)
+	fmt.Fprintf(u.ui.output, "%s", message)
 
 	for _, interaction := range u.interactions {
 		switch interaction.variant {
@@ -202,26 +242,29 @@ func (u *Message) Msg(message string) {
 			fmt.Printf("> ")
 			switch interaction.valueType {
 			case tBool:
-				interaction.value = readBool()
+				b, _ := interaction.value.(*bool)
+				*b = readBool()
 			case tInt:
-				interaction.value = readInt()
+				i, _ := interaction.value.(*int)
+				*i = readInt()
 			case tString:
-				interaction.value = readString()
+				s, _ := interaction.value.(*string)
+				*s = readString()
 			}
 		case show:
 			switch interaction.valueType {
 			case tBool:
-				fmt.Fprintf(color.Output, "%s: %s\n", emoji.Sprint(interaction.name), color.MagentaString("%t", interaction.value))
+				fmt.Fprintf(u.ui.output, "%s: %s\n", emoji.Sprint(interaction.name), color.MagentaString("%t", interaction.value))
 			case tInt:
-				fmt.Fprintf(color.Output, "%s: %s\n", emoji.Sprint(interaction.name), color.CyanString("%d", interaction.value))
+				fmt.Fprintf(u.ui.output, "%s: %s\n", emoji.Sprint(interaction.name), color.CyanString("%d", interaction.value))
 			case tString:
-				fmt.Fprintf(color.Output, "%s: %s\n", emoji.Sprint(interaction.name), color.GreenString("%s", interaction.value))
+				fmt.Fprintf(u.ui.output, "%s: %s\n", emoji.Sprint(interaction.name), color.GreenString("%s", interaction.value))
 			}
 		}
 	}
 
 	for idx, headers := range u.tableHeaders {
-		table := tablewriter.NewWriter(color.Output)
+		table := tablewriter.NewWriter(u.ui.output)
 		table.SetHeader(headers)
 		table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
 		table.SetCenterSeparator("|")
@@ -324,7 +367,7 @@ func (u *Message) WithStringValue(name string, value string) *Message {
 func (u *Message) WithIntValue(name string, value int) *Message {
 	u.interactions = append(u.interactions, interaction{
 		name:      name,
-		variant:   show,
+		variant:   ask,
 		valueType: tInt,
 		value:     value,
 	})
@@ -335,7 +378,7 @@ func (u *Message) WithIntValue(name string, value int) *Message {
 func (u *Message) WithAskBool(name string, result *bool) *Message {
 	u.interactions = append(u.interactions, interaction{
 		name:      name,
-		variant:   show,
+		variant:   ask,
 		valueType: tBool,
 		value:     result,
 	})
@@ -346,7 +389,7 @@ func (u *Message) WithAskBool(name string, result *bool) *Message {
 func (u *Message) WithAskString(name string, result *string) *Message {
 	u.interactions = append(u.interactions, interaction{
 		name:      name,
-		variant:   show,
+		variant:   ask,
 		valueType: tString,
 		value:     result,
 	})
@@ -374,6 +417,7 @@ func readBool() bool {
 func readString() string {
 	var value string
 	fmt.Scanf("%s", &value)
+	value = strings.TrimSpace(value)
 
 	return value
 }

@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package application
 
 import (
@@ -16,11 +27,12 @@ import (
 	"github.com/gin-gonic/gin"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 // Create handles the API endpoint POST /namespaces/:namespace/applications
 // It creates a new and empty application. I.e. without a workload.
-func (hc Controller) Create(c *gin.Context) apierror.APIErrors {
+func Create(c *gin.Context) apierror.APIErrors {
 	ctx := c.Request.Context()
 	namespace := c.Param("namespace")
 	username := requestctx.User(ctx).Username
@@ -34,6 +46,11 @@ func (hc Controller) Create(c *gin.Context) apierror.APIErrors {
 	err = c.BindJSON(&createRequest)
 	if err != nil {
 		return apierror.NewBadRequestError(err.Error())
+	}
+
+	errorMsgs := validation.IsDNS1123Subdomain(createRequest.Name)
+	if len(errorMsgs) > 0 {
+		return apierror.NewBadRequestErrorf("Application's name must consist of lower case alphanumeric characters or '-', and must start and end with an alphanumeric character (e.g. 'my-name', or '123-abc').")
 	}
 
 	appRef := models.NewAppRef(createRequest.Name, namespace)

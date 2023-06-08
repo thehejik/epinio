@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package cli
 
 import (
@@ -35,8 +46,6 @@ func bindOption(cmd *cobra.Command) {
 			// We are responsible for splitting into segments, and expanding only the last
 			// segment.
 
-			ctx := cmd.Context()
-
 			app, err := usercmd.New(cmd.Context())
 			if err != nil {
 				return nil, cobra.ShellCompDirectiveNoFileComp
@@ -45,7 +54,7 @@ func bindOption(cmd *cobra.Command) {
 			values := strings.Split(toComplete, ",")
 			if len(values) == 0 {
 				// Nothing. Report all possible matches
-				matches := app.ConfigurationMatching(ctx, toComplete)
+				matches := app.ConfigurationMatching(toComplete)
 				return matches, cobra.ShellCompDirectiveNoFileComp
 			}
 
@@ -54,7 +63,7 @@ func bindOption(cmd *cobra.Command) {
 			// expansions for that segment.
 
 			matches := []string{}
-			for _, match := range app.ConfigurationMatching(ctx, values[len(values)-1]) {
+			for _, match := range app.ConfigurationMatching(values[len(values)-1]) {
 				values[len(values)-1] = match
 				matches = append(matches, strings.Join(values, ","))
 			}

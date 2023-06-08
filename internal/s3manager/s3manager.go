@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 // Package s3manager implements the various functions needed to store and retrieve
 // files from an S3 API compatible endpoint (AWS S3, Minio, etc)
 package s3manager
@@ -5,10 +16,8 @@ package s3manager
 import (
 	"context"
 	"crypto/x509"
-	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 
 	"github.com/epinio/epinio/helpers/kubernetes"
 	"github.com/epinio/epinio/internal/helmchart"
@@ -18,8 +27,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"gopkg.in/ini.v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type Manager struct {
@@ -74,6 +81,11 @@ func New(connectionDetails ConnectionDetails) (*Manager, error) {
 		Secure:    connectionDetails.UseSSL,
 		Transport: transport,
 		Region:    connectionDetails.Location,
+	}
+
+	// if no credentials are provided then we are going to try to connect with the IAM Role
+	if connectionDetails.AccessKeyID == "" && connectionDetails.SecretAccessKey == "" {
+		opts.Creds = credentials.NewIAM("")
 	}
 
 	if len(connectionDetails.CA) > 0 {
@@ -147,36 +159,6 @@ func GetConnectionDetails(ctx context.Context, cluster *kubernetes.Cluster, secr
 	}
 
 	return details, nil
-}
-
-// StoreConnectionDetails stores the S3 connection details in a secret. The
-// ini-file format is compatible with awscli.
-// related tekton task: https://hub.tekton.dev/tekton/task/aws-cli
-func StoreConnectionDetails(ctx context.Context, cluster *kubernetes.Cluster, secretNamespace, secretName string, details ConnectionDetails) (*corev1.Secret, error) {
-	credentials := fmt.Sprintf(`[default]
-aws_access_key_id     = %s
-aws_secret_access_key = %s
-`, details.AccessKeyID, details.SecretAccessKey)
-	config := fmt.Sprintf(`[default]
-region = %s
-`, details.Location)
-
-	secret, err := cluster.Kubectl.CoreV1().Secrets(secretNamespace).Create(ctx,
-		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: secretName,
-			},
-			StringData: map[string]string{
-				"credentials": credentials,
-				"config":      config,
-				"endpoint":    details.Endpoint,
-				"useSSL":      strconv.FormatBool(details.UseSSL),
-				"bucket":      details.Bucket,
-			},
-			Type: "Opaque",
-		}, metav1.CreateOptions{})
-
-	return secret, err
 }
 
 // Meta retrieves the meta data for the blob specified by it blobUID.

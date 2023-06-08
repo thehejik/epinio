@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package acceptance_test
 
 import (
@@ -89,6 +100,50 @@ var _ = Describe("apps env", LApplication, func() {
 
 				Expect(deployedEnv(namespace, appName)).ToNot(ContainSubstring("MYVAR"))
 			})
+
+			Context("command completion", func() {
+				// MYVAX is intentionally different from MYVAR, to avoid possible clashes
+				BeforeEach(func() {
+					out, err := env.Epinio("", "apps", "env", "set", appName, "MYVAX", "myvalue")
+					Expect(err).ToNot(HaveOccurred(), out)
+				})
+
+				AfterEach(func() {
+					out, err := env.Epinio("", "apps", "env", "unset", appName, "MYVAX")
+					Expect(err).ToNot(HaveOccurred(), out)
+				})
+
+				It("matches empty app prefix", func() {
+					out, err := env.Epinio("", "__complete", "app", "env", "unset", "")
+					Expect(err).ToNot(HaveOccurred(), out)
+					Expect(out).To(ContainSubstring(appName))
+				})
+
+				It("matches empty var prefix", func() {
+					out, err := env.Epinio("", "__complete", "app", "env", "unset", appName, "")
+					Expect(err).ToNot(HaveOccurred(), out)
+					Expect(out).To(ContainSubstring("MYVAX"))
+				})
+
+				It("does not match unknown app prefix", func() {
+					out, err := env.Epinio("", "__complete", "app", "env", "unset", "bogus")
+					Expect(err).ToNot(HaveOccurred(), out)
+					Expect(out).ToNot(ContainSubstring("bogus"))
+				})
+
+				It("does not match unknown var prefix", func() {
+					out, err := env.Epinio("", "__complete", "app", "env", "unset", appName, "bogus")
+					Expect(err).ToNot(HaveOccurred(), out)
+					Expect(out).ToNot(ContainSubstring("bogus"))
+				})
+
+				It("does not match bogus arguments", func() {
+					out, err := env.Epinio("", "__complete", "app", "env", "unset", appName, "MYVAX", "")
+					Expect(err).ToNot(HaveOccurred(), out)
+					Expect(out).ToNot(ContainSubstring(appName))
+					Expect(out).ToNot(ContainSubstring("MYVAX"))
+				})
+			})
 		})
 
 		When("setting an environment variable", func() {
@@ -114,6 +169,27 @@ var _ = Describe("apps env", LApplication, func() {
 				)
 			})
 
+			Context("list command completion", func() {
+				It("matches empty prefix", func() {
+					out, err := env.Epinio("", "__complete", "app", "env", "list", "")
+					Expect(err).ToNot(HaveOccurred(), out)
+					Expect(out).To(ContainSubstring(appName))
+				})
+
+				It("does not match unknown prefix", func() {
+					out, err := env.Epinio("", "__complete", "app", "env", "list", "bogus")
+					Expect(err).ToNot(HaveOccurred(), out)
+					Expect(out).ToNot(ContainSubstring("bogus"))
+				})
+
+				It("does not match bogus arguments", func() {
+					out, err := env.Epinio("", "__complete", "app", "env", "list", appName, "")
+					Expect(err).ToNot(HaveOccurred(), out)
+					Expect(out).ToNot(ContainSubstring(appName))
+					Expect(out).ToNot(ContainSubstring("MYVAR"))
+				})
+			})
+
 			It("is retrieved with show", func() {
 				out, err := env.Epinio("", "apps", "env", "show", appName, "MYVAR")
 				Expect(err).ToNot(HaveOccurred(), out)
@@ -121,11 +197,65 @@ var _ = Describe("apps env", LApplication, func() {
 				Expect(out).To(ContainSubstring(`Value: myvalue`))
 			})
 
+			Context("show command completion", func() {
+				It("matches empty app prefix", func() {
+					out, err := env.Epinio("", "__complete", "app", "env", "show", "")
+					Expect(err).ToNot(HaveOccurred(), out)
+					Expect(out).To(ContainSubstring(appName))
+				})
+
+				It("matches empty var prefix", func() {
+					out, err := env.Epinio("", "__complete", "app", "env", "show", appName, "")
+					Expect(err).ToNot(HaveOccurred(), out)
+					Expect(out).To(ContainSubstring("MYVAR"))
+				})
+
+				It("does not match unknown app prefix", func() {
+					out, err := env.Epinio("", "__complete", "app", "env", "show", "bogus")
+					Expect(err).ToNot(HaveOccurred(), out)
+					Expect(out).ToNot(ContainSubstring("bogus"))
+				})
+
+				It("does not match unknown var prefix", func() {
+					out, err := env.Epinio("", "__complete", "app", "env", "show", appName, "bogus")
+					Expect(err).ToNot(HaveOccurred(), out)
+					Expect(out).ToNot(ContainSubstring("bogus"))
+				})
+
+				It("does not match bogus arguments", func() {
+					out, err := env.Epinio("", "__complete", "app", "env", "show", appName, "MYVAR", "")
+					Expect(err).ToNot(HaveOccurred(), out)
+					Expect(out).ToNot(ContainSubstring(appName))
+					Expect(out).ToNot(ContainSubstring("MYVAR"))
+				})
+			})
+
 			It("is injected into the pushed workload", func() {
 				appDir := "../assets/sample-app"
 				out, err := env.EpinioPush(appDir, appName, "--name", appName)
 				Expect(err).ToNot(HaveOccurred(), out)
 				Expect(deployedEnv(namespace, appName)).To(ContainSubstring("MYVAR"))
+			})
+
+			Context("command completion", func() {
+				It("matches empty prefix", func() {
+					out, err := env.Epinio("", "__complete", "app", "env", "set", "")
+					Expect(err).ToNot(HaveOccurred(), out)
+					Expect(out).To(ContainSubstring(appName))
+				})
+
+				It("does not match unknown prefix", func() {
+					out, err := env.Epinio("", "__complete", "app", "env", "set", "bogus")
+					Expect(err).ToNot(HaveOccurred(), out)
+					Expect(out).ToNot(ContainSubstring("bogus"))
+				})
+
+				It("does not match bogus arguments", func() {
+					out, err := env.Epinio("", "__complete", "app", "env", "set", appName, "")
+					Expect(err).ToNot(HaveOccurred(), out)
+					Expect(out).ToNot(ContainSubstring(appName))
+					Expect(out).ToNot(ContainSubstring("MYVAR"))
+				})
 			})
 		})
 	})

@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 // Package authtoken creates JWT tokens to secure the websockets connections
 package authtoken
 
@@ -17,10 +28,10 @@ var (
 )
 
 const (
-	maxExpiry = 30 * time.Second
+	MaxExpiry = 30 * time.Second
 
 	// DefaultExpiry for the auth token
-	DefaultExpiry = maxExpiry
+	DefaultExpiry = MaxExpiry
 )
 
 // EpinioClaims are the values we store in the JWT
@@ -44,7 +55,7 @@ func init() {
 // because we can't revoke and don't check for deleted users.
 func Create(user string, s time.Duration) string {
 	// seriously, don't use a long expiry time with this code
-	if s > maxExpiry {
+	if s > MaxExpiry {
 		return ""
 	}
 	claims := EpinioClaims{

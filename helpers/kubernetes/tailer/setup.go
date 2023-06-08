@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 // tailer manages objects which tail the logs of a collection of pods specified by a label selector.
 // This is similar to what the cli tool `stern` does.
 package tailer
@@ -204,6 +215,9 @@ func StreamLogs(ctx context.Context, logChan chan ContainerLogLine, wg *sync.Wai
 				logger.Info("tailer done", "id", id)
 				wg.Done()
 			}(id)
+
+			logger.Info("tailer added", "id", id)
+
 		case p := <-removed:
 			id := p.GetID()
 			if tails[id] == nil {
@@ -213,6 +227,8 @@ func StreamLogs(ctx context.Context, logChan chan ContainerLogLine, wg *sync.Wai
 			logger.Info("tailer remove", "id", id)
 
 			delete(tails, id)
+
+			logger.Info("tailer removed", "id", id)
 		case <-ctx.Done():
 			logger.Info("received stop request")
 			return nil

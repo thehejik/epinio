@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package usercmd
 
 import (
@@ -69,7 +80,7 @@ func (c *EpinioClient) ServiceCatalogShow(serviceName string) error {
 }
 
 // ServiceCreate creates a service
-func (c *EpinioClient) ServiceCreate(catalogServiceName, serviceName string) error {
+func (c *EpinioClient) ServiceCreate(catalogServiceName, serviceName string, wait bool) error {
 	log := c.Log.WithName("ServiceCreate")
 	log.Info("start")
 	defer log.Info("return")
@@ -77,11 +88,13 @@ func (c *EpinioClient) ServiceCreate(catalogServiceName, serviceName string) err
 	c.ui.Note().
 		WithStringValue("Catalog", catalogServiceName).
 		WithStringValue("Service", serviceName).
+		WithBoolValue("Wait For Completion", wait).
 		Msg("Creating Service...")
 
 	request := &models.ServiceCreateRequest{
 		CatalogService: catalogServiceName,
 		Name:           serviceName,
+		Wait:           wait,
 	}
 
 	err := c.API.ServiceCreate(request, c.Settings.Namespace)
@@ -113,6 +126,9 @@ func (c *EpinioClient) ServiceShow(serviceName string) error {
 	boundApps := service.BoundApps
 	sort.Strings(boundApps)
 
+	internalRoutes := service.InternalRoutes
+	sort.Strings(internalRoutes)
+
 	var msg *termui.Message
 	var m string
 	if service.ManagedByHelmController {
@@ -130,13 +146,38 @@ func (c *EpinioClient) ServiceShow(serviceName string) error {
 		WithTableRow("Version", service.CatalogServiceVersion).
 		WithTableRow("Status", service.Status.String()).
 		WithTableRow("Used-By", strings.Join(boundApps, ", ")).
+		WithTableRow("Internal Routes", strings.Join(internalRoutes, ", ")).
 		Msg(m)
 
 	return nil
 }
 
 // ServiceDelete deletes one or more services, specified by name
-func (c *EpinioClient) ServiceDelete(serviceNames []string, unbind bool) error {
+func (c *EpinioClient) ServiceDelete(serviceNames []string, unbind, all bool) error {
+	if all {
+		c.ui.Note().
+			WithStringValue("Namespace", c.Settings.Namespace).
+			Msg("Querying Services for Deletion...")
+
+		if err := c.TargetOk(); err != nil {
+			return err
+		}
+
+		// Using the match API with a query matching everything. Avoids transmission
+		// of full configuration data and having to filter client-side.
+		match, err := c.API.ServiceMatch(c.Settings.Namespace, "")
+		if err != nil {
+			return err
+		}
+		if len(match.Names) == 0 {
+			c.ui.Exclamation().Msg("No services found to delete")
+			return nil
+		}
+
+		serviceNames = match.Names
+		sort.Strings(serviceNames)
+	}
+
 	namesCSV := strings.Join(serviceNames, ", ")
 	log := c.Log.WithName("DeleteService").
 		WithValues("Services", namesCSV, "Namespace", c.Settings.Namespace)
@@ -148,8 +189,10 @@ func (c *EpinioClient) ServiceDelete(serviceNames []string, unbind bool) error {
 		WithStringValue("Namespace", c.Settings.Namespace).
 		Msg("Deleting Services...")
 
-	if err := c.TargetOk(); err != nil {
-		return err
+	if !all {
+		if err := c.TargetOk(); err != nil {
+			return err
+		}
 	}
 
 	request := models.ServiceDeleteRequest{
@@ -157,6 +200,17 @@ func (c *EpinioClient) ServiceDelete(serviceNames []string, unbind bool) error {
 	}
 
 	var bound []string
+
+	s := c.ui.Progressf("Deleting %s in %s", serviceNames, c.Settings.Namespace)
+	defer s.Stop()
+
+	go c.trackDeletion(serviceNames, func() []string {
+		match, err := c.API.ServiceMatch(c.Settings.Namespace, "")
+		if err != nil {
+			return []string{}
+		}
+		return match.Names
+	})
 
 	_, err := c.API.ServiceDelete(request, c.Settings.Namespace, serviceNames,
 		func(response *http.Response, bodyBytes []byte, err error) error {

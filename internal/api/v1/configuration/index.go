@@ -1,3 +1,14 @@
+// Copyright © 2021 - 2023 SUSE LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package configuration
 
 import (
@@ -16,7 +27,7 @@ import (
 
 // Index handles the API end point /namespaces/:namespace/configurations
 // It returns a list of all known configuration instances
-func (sc Controller) Index(c *gin.Context) apierror.APIErrors {
+func Index(c *gin.Context) apierror.APIErrors {
 	ctx := c.Request.Context()
 	namespace := c.Param("namespace")
 
@@ -44,7 +55,7 @@ func (sc Controller) Index(c *gin.Context) apierror.APIErrors {
 	return nil
 }
 
-func makeResponse(ctx context.Context, appsOf map[string][]string, configurations configurations.ConfigurationList) (models.ConfigurationResponseList, error) {
+func makeResponse(ctx context.Context, appsOf map[application.ConfigurationKey][]string, configurations configurations.ConfigurationList) (models.ConfigurationResponseList, error) {
 
 	response := models.ConfigurationResponseList{}
 
@@ -71,7 +82,7 @@ func makeResponse(ctx context.Context, appsOf map[string][]string, configuration
 			}
 		}
 
-		key := application.ConfigurationKey(configuration.Name, configuration.Namespace())
+		key := application.EncodeConfigurationKey(configuration.Name, configuration.Namespace())
 		appNames := appsOf[key]
 
 		// For service-based configuration, pull siblings out of the map. Itself excluded, of course.
