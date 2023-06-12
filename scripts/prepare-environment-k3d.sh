@@ -43,6 +43,7 @@ function create_docker_pull_secret {
 			--docker-server https://index.docker.io/v1/ \
 			--docker-username $REGISTRY_USERNAME \
 			--docker-password $REGISTRY_PASSWORD
+		kubectl patch serviceaccount default -p '{"imagePullSecrets": [{"name": "regcred"}]}'
 	fi
 }
 
@@ -80,7 +81,7 @@ prepare_system_domain
 # Check Dependencies
 check_dependency kubectl helm
 # Create docker registry image pull secret
-create_docker_pull_secret
+# create_docker_pull_secret
 
 echo "Installing Epinio"
 # Deploy epinio latest release to test upgrade
