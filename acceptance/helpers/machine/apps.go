@@ -73,6 +73,28 @@ func (m *Machine) MakeGolangApp(appName string, instances int, deployFromCurrent
 	ExpectWithOffset(1, err).ToNot(HaveOccurred())
 	appDir := path.Join(currentDir, m.root, "assets/golang-sample-app")
 
+	// TODO - remove once v1.11.0 is released - temporary workaround for upgrade tests
+	released := os.Getenv("EPINIO_RELEASED")
+	isreleased := released == "true"
+
+	upgraded := os.Getenv("EPINIO_UPGRADED")
+	isupgraded := upgraded == "true"
+
+	if isupgraded || isreleased {
+		By("Writing Procfile for GolangApp")
+	
+		// This will write procfile needed for epinio v1.10.0
+		procfile_content := "web: golang-sample-app\n"
+		procfile_filePath := appDir + "/Procfile"
+
+		file, err := os.Create(procfile_filePath)
+		Expect(err).NotTo(HaveOccurred())
+		defer file.Close()
+	
+		_, err = file.WriteString(procfile_content)
+		Expect(err).NotTo(HaveOccurred())
+	}
+
 	return m.MakeAppWithDir(appName, instances, deployFromCurrentDir, appDir)
 }
 
