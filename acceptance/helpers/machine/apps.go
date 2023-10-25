@@ -74,7 +74,8 @@ func (m *Machine) MakeGolangApp(appName string, instances int, deployFromCurrent
 	appDir := path.Join(currentDir, m.root, "assets/golang-sample-app")
 
 	// This will write procfile needed for epinio v1.10.0 upgrade tests
-	procfile_content := "- web: golang-sample-app\n"
+	// TODO add some condition for upgrade tests only
+	procfile_content := "web: golang-sample-app\n"
 	procfile_filePath := appDir + "/procfile"
 
 	file, err := os.Create(procfile_filePath)
