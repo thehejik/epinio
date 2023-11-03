@@ -14,6 +14,7 @@ module github.com/epinio/epinio
 go 1.20
 
 require (
+	github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2
 	github.com/adrg/xdg v0.4.0
 	github.com/alron/ginlogr v0.0.4
 	github.com/avast/retry-go v3.0.0+incompatible
@@ -68,6 +69,8 @@ require (
 	k8s.io/metrics v0.27.3
 	k8s.io/utils v0.0.0-20230505201702-9f6742963106
 )
+
+require github.com/creack/pty v1.1.18 // indirect
 
 require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230106234847-43070de90fa1 // indirect
