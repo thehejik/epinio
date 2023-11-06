@@ -13,12 +13,11 @@ package install_test
 
 import (
 	//"encoding/json"
+
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
-	"strings"
-
 	"time"
 
 	"github.com/Netflix/go-expect"
@@ -192,16 +191,12 @@ var _ = Describe("<Scenario2> GKE, Letsencrypt-staging, deploy instance(s)", fun
 		//		})
 
 		By("Exec to running application", func() {
-			// Create complete exec command
-			p, err := proc.Get("", testenv.EpinioBinaryPath(), "app", "exec", appNameStatic)
+			// Create complete exec command, colors have to be disabled otherwise the Expect doesn't match
+			p, err := proc.Get("", testenv.EpinioBinaryPath(), "app", "exec", "--no-colors", appNameStatic)
 			Expect(err).NotTo(HaveOccurred())
 
-			args := strings.Fields(p.String())
-			command := args[0]
-			commandArgs := args[1:]
-
 			// Debug
-			fmt.Printf("\nCommand to be executed: %s\n\n", p.String())
+			fmt.Printf("\nContent of the p.Path: %s and p.Args: %s\n\n", p.Path, p.Args[1:])
 
 			// Specify a timeout
 			defaultExpectTimout := 5 * time.Second
@@ -209,8 +204,7 @@ var _ = Describe("<Scenario2> GKE, Letsencrypt-staging, deploy instance(s)", fun
 			Expect(err).NotTo(HaveOccurred())
 			defer console.Close()
 
-			cmd := exec.Command(command, commandArgs...)
-			//fmt.Printf("\nCommand to be executed: %s\n\n", cmd.String())
+			cmd := exec.Command(p.Path, p.Args[1:]...)
 			cmd.Stdin = console.Tty()
 			cmd.Stdout = console.Tty()
 			cmd.Stderr = console.Tty()
@@ -219,21 +213,25 @@ var _ = Describe("<Scenario2> GKE, Letsencrypt-staging, deploy instance(s)", fun
 			Expect(err).NotTo(HaveOccurred())
 			defer cmd.Wait()
 			// Interact with the program.
-			str, err := console.ExpectString("Executing a shell")
+			_, err = console.ExpectString("Executing a shellss")
+			fmt.Printf("Actual error type is: %T, and message is: %s\n", err, err)
+			fmt.Printf("Actual error is: %s", err)
 			if err != nil {
-				log.Fatalf("got %s", str)
+				log.Fatal(err)
 			}
-			// Wait for shell
-			console.ExpectString(".*@.*" + appNameStatic + ".*\\$#")
-			// Check whether running on Packeto container
+			_, err = console.ExpectString("Application: " + appNameStatic)
+			Expect(err).NotTo(HaveOccurred())
+			fmt.Printf("Actual error is: %s", err)
+			_, err = console.Expect(expect.RegexpPattern(".*@.*" + appNameStatic + ".*:/\\$"))
+			fmt.Printf("Actual error is: %s", err)
+			Expect(err).NotTo(HaveOccurred())
+			// Check whether app is running on Packeto container
 			console.SendLine("cat /etc/os-release")
-			str, err = console.ExpectString("Paketo Buildpacks")
-			if err != nil {
-				log.Fatalf("got %s", str)
-			}
-			console.SendLine("exit")
-			console.ExpectEOF()
-			Expect(true).To(BeTrue()) // Replace with your actual expectations.
+			_, err = console.ExpectString("Paketo Buildpack")
+			Expect(err).NotTo(HaveOccurred())
+			console.Send("exit\n")
+
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		//		By("Pushing an app with "+instancesNum+" instances, and not verifying certs", func() {
