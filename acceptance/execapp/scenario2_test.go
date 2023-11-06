@@ -26,8 +26,9 @@ import (
 	. "github.com/onsi/gomega"
 
 	//"github.com/epinio/epinio/acceptance/helpers/catalog" //needed for NewAppName
-	"github.com/epinio/epinio/acceptance/helpers/epinio"
 	"github.com/epinio/epinio/acceptance/helpers/proc"
+
+	"github.com/epinio/epinio/acceptance/helpers/epinio"
 
 	//"github.com/epinio/epinio/acceptance/helpers/route53"
 	"github.com/epinio/epinio/acceptance/testenv"
@@ -201,7 +202,9 @@ var _ = Describe("<Scenario2> GKE, Letsencrypt-staging, deploy instance(s)", fun
 			// Specify a timeout
 			defaultExpectTimout := 5 * time.Second
 			console, err := expect.NewConsole(expect.WithStdout(os.Stdout), expect.WithStdin(os.Stdin), expect.WithDefaultTimeout(defaultExpectTimout))
-			Expect(err).NotTo(HaveOccurred())
+			if err != nil {
+				log.Fatal(err)
+			}
 			defer console.Close()
 
 			cmd := exec.Command(p.Path, p.Args[1:]...)
@@ -210,28 +213,32 @@ var _ = Describe("<Scenario2> GKE, Letsencrypt-staging, deploy instance(s)", fun
 			cmd.Stderr = console.Tty()
 
 			err = cmd.Start()
-			Expect(err).NotTo(HaveOccurred())
+			if err != nil {
+				log.Fatal(err)
+			}
 			defer cmd.Wait()
 			// Interact with the program.
-			_, err = console.ExpectString("Executing a shellss")
-			fmt.Printf("Actual error type is: %T, and message is: %s\n", err, err)
-			fmt.Printf("Actual error is: %s", err)
+			_, err = console.ExpectString("Executing a shell")
+			//fmt.Printf("Actual error type is: %T, and message is: %s\n", err, err)
+			//fmt.Printf("Actual error is: %s", err)
 			if err != nil {
 				log.Fatal(err)
 			}
 			_, err = console.ExpectString("Application: " + appNameStatic)
-			Expect(err).NotTo(HaveOccurred())
-			fmt.Printf("Actual error is: %s", err)
+			if err != nil {
+				log.Fatal(err)
+			}
 			_, err = console.Expect(expect.RegexpPattern(".*@.*" + appNameStatic + ".*:/\\$"))
-			fmt.Printf("Actual error is: %s", err)
-			Expect(err).NotTo(HaveOccurred())
+			if err != nil {
+				log.Fatal(err)
+			}
 			// Check whether app is running on Packeto container
 			console.SendLine("cat /etc/os-release")
 			_, err = console.ExpectString("Paketo Buildpack")
-			Expect(err).NotTo(HaveOccurred())
-			console.Send("exit\n")
-
-			Expect(err).NotTo(HaveOccurred())
+			if err != nil {
+				log.Fatal(err)
+			}
+			console.SendLine("exit")
 		})
 
 		//		By("Pushing an app with "+instancesNum+" instances, and not verifying certs", func() {
