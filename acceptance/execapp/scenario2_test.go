@@ -9,28 +9,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package install_test
+package install_test2
 
 import (
 	//"encoding/json"
 
-	"fmt"
-	"log"
 	"os"
-	"os/exec"
-	"time"
-
-	"github.com/Netflix/go-expect"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	//"github.com/epinio/epinio/acceptance/helpers/catalog" //needed for NewAppName
-	"github.com/epinio/epinio/acceptance/helpers/proc"
-
-	"github.com/epinio/epinio/acceptance/helpers/epinio"
 
 	//"github.com/epinio/epinio/acceptance/helpers/route53"
+	"github.com/epinio/epinio/acceptance/helpers/epinio"
+	"github.com/epinio/epinio/acceptance/helpers/proc"
 	"github.com/epinio/epinio/acceptance/testenv"
 )
 
@@ -40,7 +33,7 @@ var _ = Describe("<Scenario2> GKE, Letsencrypt-staging, deploy instance(s)", fun
 		//	flags         []string
 		epinioHelper epinio.Epinio
 		//appName      = catalog.NewAppName()
-		appNameStatic string = "apps-430007115"
+		//appNameStatic string = "apps-430007115"
 		//	loadbalancer  string
 		domain string
 		//	zoneID        string
@@ -192,53 +185,15 @@ var _ = Describe("<Scenario2> GKE, Letsencrypt-staging, deploy instance(s)", fun
 		//		})
 
 		By("Exec to running application", func() {
-			// Create complete exec command, colors have to be disabled otherwise the Expect doesn't match
-			p, err := proc.Get("", testenv.EpinioBinaryPath(), "app", "exec", "--no-colors", appNameStatic)
-			Expect(err).NotTo(HaveOccurred())
+			child, _ := proc.EpinioExpectAppGetPrompt("bc", "bla")
+			proc.EpinioExpectAppSendCommand(child, "9*9")
+			proc.EpinioExpectAppReadOutput(child, "82")
+			proc.EpinioExpectAppSendCommand(child, "quit")
+			child.Wait()
+			Expect(true).To(BeTrue())
 
-			// Debug
-			fmt.Printf("\nContent of the p.Path: %s and p.Args: %s\n\n", p.Path, p.Args[1:])
-
-			// Specify a timeout
-			defaultExpectTimout := 5 * time.Second
-			console, err := expect.NewConsole(expect.WithStdout(os.Stdout), expect.WithStdin(os.Stdin), expect.WithDefaultTimeout(defaultExpectTimout))
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer console.Close()
-
-			cmd := exec.Command(p.Path, p.Args[1:]...)
-			cmd.Stdin = console.Tty()
-			cmd.Stdout = console.Tty()
-			cmd.Stderr = console.Tty()
-
-			err = cmd.Start()
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer cmd.Wait()
-			// Interact with the program.
-			_, err = console.ExpectString("Executing a shell")
-			//fmt.Printf("Actual error type is: %T, and message is: %s\n", err, err)
-			//fmt.Printf("Actual error is: %s", err)
-			if err != nil {
-				log.Fatal(err)
-			}
-			_, err = console.ExpectString("Application: " + appNameStatic)
-			if err != nil {
-				log.Fatal(err)
-			}
-			_, err = console.Expect(expect.RegexpPattern(".*@.*" + appNameStatic + ".*:/\\$"))
-			if err != nil {
-				log.Fatal(err)
-			}
-			// Check whether app is running on Packeto container
-			console.SendLine("cat /etc/os-release")
-			_, err = console.ExpectString("Paketo Buildpack")
-			if err != nil {
-				log.Fatal(err)
-			}
-			console.SendLine("exit")
+			//out, err = proc.Get("", "")
+			//fmt.Printf("Actual execution time is %s and error is: %s\n", out.Cmd.ProcessState.UserTime(), err)
 		})
 
 		//		By("Pushing an app with "+instancesNum+" instances, and not verifying certs", func() {

@@ -13,10 +13,12 @@ package proc
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
 
+	"github.com/ThomasRooney/gexpect"
 	"github.com/pkg/errors"
 )
 
@@ -72,4 +74,58 @@ func Kubectl(command ...string) (string, error) {
 	}
 
 	return Run(currentdir, false, "kubectl", command...)
+}
+
+func EpinioExpectAppGetPrompt(command string, appName string) (*gexpect.ExpectSubprocess, error) {
+
+	child, err := gexpect.Spawn(command)
+	if err != nil {
+		return nil, err
+	}
+
+	//	//child.Expect("Copyright")
+	//	//if err != nil {
+	//		return nil, err
+	//	}
+
+	//line, err := child.ReadLine()
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	fmt.Printf("Output is: %s", line)
+	//output += line + "\n"	}
+	//child.Expect("")
+
+	//fmt.Printf("Output is: %s", output)
+	//
+	//	bool, err := child.ExpectRegex(".*@.*" + appName + ".*:/\\$")
+	//	if err != nil {
+	//		return nil, err
+	//	}
+
+	return child, nil
+}
+
+func EpinioExpectAppSendCommand(child *gexpect.ExpectSubprocess, command string) error {
+	err := child.SendLine(command)
+	if err != nil {
+		return err
+	}
+	line, _ := child.ReadLine()
+	fmt.Printf("\n\nOutput from SendCommand is: %s", line)
+
+	return nil
+}
+
+func EpinioExpectAppReadOutput(child *gexpect.ExpectSubprocess, expectedOutput string) error {
+
+	line, _ := child.ReadLine()
+	fmt.Printf("\n\nOutput is ReadOutput: %s", line)
+
+	err := child.Expect(expectedOutput)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
