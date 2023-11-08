@@ -17,6 +17,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"time"
 
 	"github.com/ThomasRooney/gexpect"
 	"github.com/pkg/errors"
@@ -82,17 +83,23 @@ func EpinioExpectAppGetPrompt(command string, appName string) (*gexpect.ExpectSu
 	if err != nil {
 		return nil, err
 	}
+	//defer child.Wait()
 
 	//	//child.Expect("Copyright")
 	//	//if err != nil {
 	//		return nil, err
 	//	}
 
+	//child.SendLine("1+2")
+	//child.ReadLine()
+	//child.Expect("For details type")
+
 	//line, err := child.ReadLine()
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	fmt.Printf("Output is: %s", line)
+	//if err != nil {
+	//	return nil, err
+	//}
+
+	//fmt.Printf("\n\nOutput from GetPrompt is: %s", line)
 	//output += line + "\n"	}
 	//child.Expect("")
 
@@ -119,13 +126,14 @@ func EpinioExpectAppSendCommand(child *gexpect.ExpectSubprocess, command string)
 
 func EpinioExpectAppReadOutput(child *gexpect.ExpectSubprocess, expectedOutput string) error {
 
-	line, _ := child.ReadLine()
-	fmt.Printf("\n\nOutput is ReadOutput: %s", line)
-
-	err := child.Expect(expectedOutput)
+	err := child.ExpectTimeout(expectedOutput, 4*time.Second)
 	if err != nil {
+		fmt.Printf("\n\nError from ReadOutput: %s", err)
 		return err
 	}
+
+	line, _ := child.ReadLine()
+	fmt.Printf("\n\nOutput is ReadOutput: %s", line)
 
 	return nil
 }

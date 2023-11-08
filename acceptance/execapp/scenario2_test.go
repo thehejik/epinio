@@ -187,11 +187,11 @@ var _ = Describe("<Scenario2> GKE, Letsencrypt-staging, deploy instance(s)", fun
 		By("Exec to running application", func() {
 			child, _ := proc.EpinioExpectAppGetPrompt("bc", "bla")
 			proc.EpinioExpectAppSendCommand(child, "9*9")
-			proc.EpinioExpectAppReadOutput(child, "82")
+			err := proc.EpinioExpectAppReadOutput(child, "81")
+			Expect(err).ToNot(HaveOccurred())
 			proc.EpinioExpectAppSendCommand(child, "quit")
-			child.Wait()
-			Expect(true).To(BeTrue())
 
+			//			child.Wait()
 			//out, err = proc.Get("", "")
 			//fmt.Printf("Actual execution time is %s and error is: %s\n", out.Cmd.ProcessState.UserTime(), err)
 		})
