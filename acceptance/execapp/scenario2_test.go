@@ -15,6 +15,7 @@ import (
 	//"encoding/json"
 
 	"os"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -23,7 +24,6 @@ import (
 
 	//"github.com/epinio/epinio/acceptance/helpers/route53"
 	"github.com/epinio/epinio/acceptance/helpers/epinio"
-	"github.com/epinio/epinio/acceptance/helpers/proc"
 	"github.com/epinio/epinio/acceptance/testenv"
 )
 
@@ -185,11 +185,25 @@ var _ = Describe("<Scenario2> GKE, Letsencrypt-staging, deploy instance(s)", fun
 		//		})
 
 		By("Exec to running application", func() {
-			child, _ := proc.EpinioExpectAppGetPrompt("bc", "bla")
-			proc.EpinioExpectAppSendCommand(child, "9*9")
-			err := proc.EpinioExpectAppReadOutput(child, "81")
+			child, _ := epinio.AppExecGetPrompt("apps-430007115")
+			epinio.AppExecExpectOutput(child, "Executing a shell")
+			err := epinio.AppExecExpectOutput(child, "apps-430007115")
 			Expect(err).ToNot(HaveOccurred())
-			proc.EpinioExpectAppSendCommand(child, "quit")
+			//epinio.AppExecSendLine(child, "9*9")
+			//err = epinio.AppExecExpectOutput(child, "81")
+			//Expect(err).ToNot(HaveOccurred())
+			//epinio.AppExecExpectOutput(child, ":/\\$")
+			//Expect(err).ToNot(HaveOccurred())
+			time.Sleep(2 * time.Second)
+			epinio.AppExecSendLine(child, "cat /etc/os-release")
+			err = epinio.AppExecExpectOutput(child, ".*@.*:/\\$")
+			Expect(err).ToNot(HaveOccurred())
+
+			epinio.AppExecSendLine(child, "exit")
+			err = epinio.AppExecExpectOutput(child, "exit") //this makes the ls -al to appear in logs
+			Expect(err).ToNot(HaveOccurred())
+			child.Wait()
+			child.Close()
 
 			//			child.Wait()
 			//out, err = proc.Get("", "")

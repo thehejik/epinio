@@ -59,7 +59,7 @@ var _ = SynchronizedAfterSuite(func() {
 	} else {
 		// Delete left-overs no matter what
 		//defer func() { _, _ = testenv.CleanupTmp() }()
-		fmt.Print("Cleanup skipped skipping anyway")
+		fmt.Print("\nCleanup skipped - skipping anyway")
 	}
 })
 

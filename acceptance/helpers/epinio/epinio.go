@@ -13,8 +13,11 @@ package epinio
 
 import (
 	"fmt"
+	"log"
 	"os"
+	"time"
 
+	"github.com/ThomasRooney/gexpect"
 	"github.com/epinio/epinio/acceptance/helpers/proc"
 	"github.com/epinio/epinio/acceptance/testenv"
 
@@ -173,4 +176,74 @@ func (e *Epinio) Uninstall() (string, error) {
 		return out, err
 	}
 	return out, nil
+}
+
+func AppExecGetPrompt(appName string) (*gexpect.ExpectSubprocess, error) {
+	p, err := proc.Get("", testenv.EpinioBinaryPath(), "app exec --no-colors", appName)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Printf("\nInitiating \"%s\" shell console...\n", p.String())
+	//fmt.Printf("\nContent of the p.Path: %s and p.Args: %s\n\n", p.Path, p.Args[1:])
+	//var string epinioCommand := p.Path + p.Args[1:]
+	//fmt.Printf("\nContent of epinioCommand: %s\n\n", p.String())
+
+	child, err := gexpect.Spawn(p.String())
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+	//defer child.Wait()
+
+	//	//child.Expect("Copyright")
+	//	//if err != nil {
+	//		return nil, err
+	//	}
+
+	//child.SendLine("1+2")
+	//child.ReadLine()
+	//child.Expect("For details type")
+
+	//line, err := child.ReadLine()
+	//if err != nil {
+	//	return nil, err
+	//}
+
+	//fmt.Printf("\n\nOutput from GetPrompt is: %s", line)
+	//output += line + "\n"	}
+	//child.Expect("")
+
+	//fmt.Printf("Output is: %s", output)
+	//
+	//	bool, err := child.ExpectRegex(".*@.*" + appName + ".*:/\\$")
+	//	if err != nil {
+	//		return nil, err
+	//	}
+
+	return child, nil
+}
+
+func AppExecSendLine(child *gexpect.ExpectSubprocess, command string) error {
+	err := child.SendLine(command)
+	if err != nil {
+		return err
+	}
+	//msg, _ := child.ReadLine()
+	//	fmt.Printf("\nSent:\n%s", command)
+
+	return nil
+}
+
+func AppExecExpectOutput(child *gexpect.ExpectSubprocess, expectedOutput string) error {
+	defaultExpectTimeout := 10 * time.Second
+	_, str, err := child.ExpectTimeoutRegexFindWithOutput(expectedOutput, defaultExpectTimeout)
+	if err != nil {
+		//fmt.Printf("\n\nError from ReadOutput: %s", err)
+		return err
+	}
+	fmt.Printf("%s", str)
+	//fmt.Printf("\nMatching Output:\n%s", str)
+
+	return nil
 }
