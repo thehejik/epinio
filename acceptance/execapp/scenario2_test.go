@@ -32,7 +32,7 @@ var _ = Describe("<Scenario2> GKE, Letsencrypt-staging, deploy instance(s)", fun
 		//	flags         []string
 		epinioHelper epinio.Epinio
 		//appName      = catalog.NewAppName()
-		//appNameStatic string = "apps-430007115"
+		appName string = "apps-430007115"
 		//	loadbalancer  string
 		domain string
 		//	zoneID        string
@@ -184,28 +184,16 @@ var _ = Describe("<Scenario2> GKE, Letsencrypt-staging, deploy instance(s)", fun
 		//		})
 
 		By("Exec to running application", func() {
-			child, _ := epinio.AppExecGetPrompt("apps-430007115")
-			epinio.AppExecExpectOutput(child, "Executing a shell")
-			err := epinio.AppExecExpectOutput(child, "apps-430007115")
-			Expect(err).ToNot(HaveOccurred())
-			//epinio.AppExecSendLine(child, "9*9")
-			//err = epinio.AppExecExpectOutput(child, "81")
-			//Expect(err).ToNot(HaveOccurred())
-			//epinio.AppExecExpectOutput(child, ":/\\$")
-			//Expect(err).ToNot(HaveOccurred())
-			//time.Sleep(2 * time.Second)
+			child, _ := epinio.AppExecGetPrompt(appName) //TODO add support for namespace and instanceNr
 
-			epinio.AppExecSendLine(child, "cat /etc/os-release")
-
-			err = epinio.AppExecExpectOutput(child, "Paketo Buildpacks")
-			Expect(err).ToNot(HaveOccurred())
-
-			err = epinio.AppExecExpectOutput(child, ".*@.*:/\\$")
+			epinio.AppExecSendLine(child, "cat /etc/os-release | grep PRETTY_NAME")
+			err := epinio.AppExecExpectOutput(child, "Paketo Buildpacks.*")
 			Expect(err).ToNot(HaveOccurred())
 
 			epinio.AppExecSendLine(child, "exit")
-			err = epinio.AppExecExpectOutput(child, "exit") //this makes the ls -al to appear in logs
+			err = epinio.AppExecExpectOutput(child, "exit")
 			Expect(err).ToNot(HaveOccurred())
+
 			child.Wait()
 			child.Close()
 

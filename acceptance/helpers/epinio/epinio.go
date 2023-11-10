@@ -181,41 +181,30 @@ func (e *Epinio) Uninstall() (string, error) {
 func AppExecGetPrompt(appName string) (*gexpect.ExpectSubprocess, error) {
 	p, err := proc.Get("", testenv.EpinioBinaryPath(), "app exec --no-colors", appName)
 	if err != nil {
+		log.Fatal(err)
 		return nil, err
 	}
 
-	fmt.Printf("\nInitiating \"%s\" shell console...\n", p.String())
-	//fmt.Printf("\nContent of the p.Path: %s and p.Args: %s\n\n", p.Path, p.Args[1:])
-	//var string epinioCommand := p.Path + p.Args[1:]
-	//fmt.Printf("\nContent of epinioCommand: %s\n\n", p.String())
+	fmt.Printf("\nInitializing \"%s\" shell console...\n", p.String())
 
 	child, err := gexpect.Spawn(p.String())
 	if err != nil {
 		log.Fatal(err)
 		return nil, err
 	}
-	//defer child.Wait()
 
-	//child.Capture()
-	//child.SendLine("1+2")
-	//child.ReadLine()
-	//child.Expect("For details type")
-
-	//line, err := child.ReadLine()
-	//if err != nil {
-	//	return nil, err
-	//}
-
-	//fmt.Printf("\n\nOutput from GetPrompt is: %s", line)
-	//output += line + "\n"	}
-	//child.Expect("")
-
-	//fmt.Printf("Output is: %s", output)
-	//
-	//	bool, err := child.ExpectRegex(".*@.*" + appName + ".*:/\\$")
-	//	if err != nil {
-	//		return nil, err
-	//	}
+	AppExecExpectOutput(child, "Executing a shell")
+	err = AppExecExpectOutput(child, appName)
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+	AppExecSendLine(child, "") //Send Enter and wait for Prompt
+	err = AppExecExpectOutput(child, ".*@.*:/\\$")
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
 
 	return child, nil
 }
@@ -223,24 +212,22 @@ func AppExecGetPrompt(appName string) (*gexpect.ExpectSubprocess, error) {
 func AppExecSendLine(child *gexpect.ExpectSubprocess, command string) error {
 	err := child.SendLine(command)
 	if err != nil {
+		log.Fatal(err)
 		return err
 	}
-	//msg, _ := child.ReadLine()
-	//	fmt.Printf("\nSent:\n%s", command)
 
 	return nil
-
 }
 
 func AppExecExpectOutput(child *gexpect.ExpectSubprocess, expectedOutput string) error {
 	defaultExpectTimeout := 10 * time.Second
-	_, str, err := child.ExpectTimeoutRegexFindWithOutput(expectedOutput, defaultExpectTimeout)
+	match, out, err := child.ExpectTimeoutRegexFindWithOutput(expectedOutput, defaultExpectTimeout)
 	if err != nil {
-		//fmt.Printf("\n\nError from ReadOutput: %s", err)
+		log.Fatal(err)
 		return err
 	}
-	fmt.Printf("%s", str)
-	//fmt.Printf("\nMatching Output:\n%s", str)
+	fmt.Printf("%s", out)
+	fmt.Printf("\n----------\nString \"%v\" found!\n----------\n", match)
 
 	return nil
 }
