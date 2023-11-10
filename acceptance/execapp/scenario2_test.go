@@ -15,7 +15,6 @@ import (
 	//"encoding/json"
 
 	"os"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -194,8 +193,13 @@ var _ = Describe("<Scenario2> GKE, Letsencrypt-staging, deploy instance(s)", fun
 			//Expect(err).ToNot(HaveOccurred())
 			//epinio.AppExecExpectOutput(child, ":/\\$")
 			//Expect(err).ToNot(HaveOccurred())
-			time.Sleep(2 * time.Second)
+			//time.Sleep(2 * time.Second)
+
 			epinio.AppExecSendLine(child, "cat /etc/os-release")
+
+			err = epinio.AppExecExpectOutput(child, "Paketo Buildpacks")
+			Expect(err).ToNot(HaveOccurred())
+
 			err = epinio.AppExecExpectOutput(child, ".*@.*:/\\$")
 			Expect(err).ToNot(HaveOccurred())
 

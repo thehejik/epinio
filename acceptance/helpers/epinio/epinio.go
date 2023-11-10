@@ -196,11 +196,7 @@ func AppExecGetPrompt(appName string) (*gexpect.ExpectSubprocess, error) {
 	}
 	//defer child.Wait()
 
-	//	//child.Expect("Copyright")
-	//	//if err != nil {
-	//		return nil, err
-	//	}
-
+	//child.Capture()
 	//child.SendLine("1+2")
 	//child.ReadLine()
 	//child.Expect("For details type")
@@ -233,6 +229,7 @@ func AppExecSendLine(child *gexpect.ExpectSubprocess, command string) error {
 	//	fmt.Printf("\nSent:\n%s", command)
 
 	return nil
+
 }
 
 func AppExecExpectOutput(child *gexpect.ExpectSubprocess, expectedOutput string) error {
