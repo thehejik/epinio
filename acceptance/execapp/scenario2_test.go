@@ -196,10 +196,6 @@ var _ = Describe("<Scenario2> GKE, Letsencrypt-staging, deploy instance(s)", fun
 
 			child.Wait()
 			child.Close()
-
-			//			child.Wait()
-			//out, err = proc.Get("", "")
-			//fmt.Printf("Actual execution time is %s and error is: %s\n", out.Cmd.ProcessState.UserTime(), err)
 		})
 
 		//		By("Pushing an app with "+instancesNum+" instances, and not verifying certs", func() {

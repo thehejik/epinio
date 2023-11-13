@@ -226,8 +226,9 @@ func AppExecExpectOutput(child *gexpect.ExpectSubprocess, expectedOutput string)
 		log.Fatal(err)
 		return err
 	}
-	fmt.Printf("%s", out)
-	fmt.Printf("\n----------\nString \"%v\" found!\n----------\n", match)
-
+	fmt.Printf("%s\n", out)
+	for i := 0; i < len(match); i++ {
+		fmt.Printf("============\nString \"%v\" found!\n============\n", match[i])
+	}
 	return nil
 }
