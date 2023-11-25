@@ -13,7 +13,6 @@ package epinio
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"time"
 
@@ -178,57 +177,53 @@ func (e *Epinio) Uninstall() (string, error) {
 	return out, nil
 }
 
-func AppExecGetPrompt(appName string) (*gexpect.ExpectSubprocess, error) {
-	p, err := proc.Get("", testenv.EpinioBinaryPath(), "app exec --no-colors", appName)
-	if err != nil {
-		log.Fatal(err)
-		return nil, err
+func AppExecGetPrompt(appName string, args ...string) (*gexpect.ExpectSubprocess, error) {
+
+	// This adds support for extra exec flags like --instance <name>
+	commandString := appName
+	for _, arg := range args {
+		commandString += " " + arg
 	}
+
+	// Concatenate the epinio app exec command
+	p, err := proc.Get("", testenv.EpinioBinaryPath(), "app exec --no-colors", commandString)
+	Expect(err).ToNot(HaveOccurred())
 
 	fmt.Printf("\nInitializing \"%s\" shell console...\n", p.String())
 
 	child, err := gexpect.Spawn(p.String())
-	if err != nil {
-		log.Fatal(err)
-		return nil, err
-	}
+	Expect(err).ToNot(HaveOccurred())
 
 	AppExecExpectOutput(child, "Executing a shell")
-	err = AppExecExpectOutput(child, appName)
-	if err != nil {
-		log.Fatal(err)
-		return nil, err
-	}
-	AppExecSendLine(child, "") //Send Enter and wait for Prompt
-	err = AppExecExpectOutput(child, ".*@.*:/\\$")
-	if err != nil {
-		log.Fatal(err)
-		return nil, err
-	}
+	AppExecExpectOutput(child, "Application: "+appName)
+
+	// Send Enter and wait for Prompt
+	AppExecSendLine(child, "")
+	// Will caputre Prompt or "[Ee]rror"
+	AppExecExpectOutput(child, ".*@.*:/\\$|[Ee]rror.*")
 
 	return child, nil
 }
 
 func AppExecSendLine(child *gexpect.ExpectSubprocess, command string) error {
 	err := child.SendLine(command)
-	if err != nil {
-		log.Fatal(err)
-		return err
-	}
+	Expect(err).ToNot(HaveOccurred())
 
 	return nil
 }
 
 func AppExecExpectOutput(child *gexpect.ExpectSubprocess, expectedOutput string) error {
 	defaultExpectTimeout := 10 * time.Second
-	match, out, err := child.ExpectTimeoutRegexFindWithOutput(expectedOutput, defaultExpectTimeout)
-	if err != nil {
-		log.Fatal(err)
-		return err
-	}
+	_, out, err := child.ExpectTimeoutRegexFindWithOutput(expectedOutput, defaultExpectTimeout)
+	Expect(err).ToNot(HaveOccurred())
+	// Output is always helpful
 	fmt.Printf("%s\n", out)
-	for i := 0; i < len(match); i++ {
-		fmt.Printf("============\nString \"%v\" found!\n============\n", match[i])
-	}
+	// Will fail in case there is "[Ee]rror" string in output
+	Expect(out).ToNot(MatchRegexp(".*[Ee]rror.*"))
+
+	// For Debug declare "match" variable in ExpectTimeoutRegex and uncomment
+	// for i := 0; i < len(match); i++ {
+	//   fmt.Printf("============\nString \"%s\" found!\n============\n", match[i])
+	// }
 	return nil
 }

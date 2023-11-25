@@ -32,7 +32,7 @@ var _ = Describe("<Scenario2> GKE, Letsencrypt-staging, deploy instance(s)", fun
 		//	flags         []string
 		epinioHelper epinio.Epinio
 		//appName      = catalog.NewAppName()
-		appName string = "apps-430007115"
+		appName string = "app1-ns1"
 		//	loadbalancer  string
 		domain string
 		//	zoneID        string
@@ -184,16 +184,16 @@ var _ = Describe("<Scenario2> GKE, Letsencrypt-staging, deploy instance(s)", fun
 		//		})
 
 		By("Exec to running application", func() {
-			child, _ := epinio.AppExecGetPrompt(appName) //TODO add support for namespace and instanceNr
-
+			child, _ := epinio.AppExecGetPrompt(appName, "-i", "rapp1-ns1-e5de8828d4bc40ee45859070cf0b3c905198d5e1-5f6cc6bf4fvg")
+			// Look for Paketo Buildpack string in /etc/os-release
 			epinio.AppExecSendLine(child, "cat /etc/os-release | grep PRETTY_NAME")
-			err := epinio.AppExecExpectOutput(child, "Paketo Buildpacks.*")
-			Expect(err).ToNot(HaveOccurred())
+			epinio.AppExecExpectOutput(child, "Paketo Buildpacks.*")
 
+			// Exit the Epinio app shell
 			epinio.AppExecSendLine(child, "exit")
-			err = epinio.AppExecExpectOutput(child, "exit")
-			Expect(err).ToNot(HaveOccurred())
+			epinio.AppExecExpectOutput(child, "exit")
 
+			// Terminate the Expect process
 			child.Wait()
 			child.Close()
 		})
