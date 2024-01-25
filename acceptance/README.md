@@ -641,6 +641,22 @@
       -  **By:** Installing cert-manager
       -  **By:** Installing ingress controller
 
+# Tests description for acceptance/apps
+
+## `rails_test.go`
+
+- **Describe:** RubyOnRails
+    - **It:** can deploy Rails
+
+## `suite_test.go`
+
+*No test defined!*
+
+## `wordpress_test.go`
+
+- **Describe:** Wordpress
+    - **It:** can deploy Wordpress
+
 # Tests description for acceptance/upgrade
 
 ## `suite_test.go`
@@ -1147,20 +1163,4 @@
 ## `suite_test.go`
 
 *No test defined!*
-
-# Tests description for acceptance/apps
-
-## `rails_test.go`
-
-- **Describe:** RubyOnRails
-    - **It:** can deploy Rails
-
-## `suite_test.go`
-
-*No test defined!*
-
-## `wordpress_test.go`
-
-- **Describe:** Wordpress
-    - **It:** can deploy Wordpress
 
