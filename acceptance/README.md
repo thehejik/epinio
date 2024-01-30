@@ -522,6 +522,125 @@
 
 - **Describe:** Users, LMisc
 
+# Tests description for acceptance/install
+
+## `scenario1_test.go`
+
+- **Describe:** <Scenario1> GKE, epinio-ca
+      -  **By:** Domain:  + domain
+      -  **By:** Zone:    + zoneID
+    - **It:** Installs with loadbalancer IP, custom domain, and pushes an app
+      -  **By:** Checking LoadBalancer IP
+      -  **By:** Updating DNS Entries
+      -  **By:** Checking that DNS entry is correctly propagated
+      -  **By:** Installing Epinio
+      -  **By:** Connecting to Epinio
+      -  **By:** Checking Epinio info command
+      -  **By:** Pushing an app
+      -  **By:** Delete an app
+
+## `scenario2_test.go`
+
+- **Describe:** <Scenario2> GKE, Letsencrypt-staging, Zero instance
+    - **It:** Installs with letsencrypt-staging cert, custom domain and pushes an app with 0 instances
+      -  **By:** Creating letsencrypt issuer
+      -  **By:** Checking LoadBalancer IP
+      -  **By:** Updating DNS Entries
+      -  **By:** Checking that DNS entry is correctly propagated
+      -  **By:** Installing Epinio
+      -  **By:** Connecting to Epinio
+      -  **By:** Checking Epinio info command
+      -  **By:** Pushing an app with zero instances
+      -  **By:** Pushing an app with zero instances, and not verifying certs
+
+## `scenario3_test.go`
+
+- **Describe:** <Scenario3> RKE, Private CA, Configuration, on External Registry
+    - **It:** Installs with private CA and pushes an app with configuration
+      -  **By:** Installing MetalLB
+      -  **By:** Checking LoadBalancer IP
+      -  **By:** Configuring local-path storage
+      -  **By:** Creating private CA issuer
+      -  **By:** Installing Epinio
+      -  **By:** Connecting to Epinio
+      -  **By:** Checking Epinio info command
+      -  **By:** Creating a configuration and pushing an app
+      -  **By:** Delete an app
+
+## `scenario4_test.go`
+
+- **Describe:** <Scenario4> EKS, epinio-ca, on S3 storage
+    - **It:** Installs with loadbalancer IP, custom domain and pushes an app with env vars
+      -  **By:** Checking LoadBalancer IP
+      -  **By:** Updating DNS Entries
+      -  **By:** Checking that DNS entry is correctly propagated
+      -  **By:** Installing Epinio
+      -  **By:** Allow internal HTTP registry on EKS 1.24+
+      -  **By:** Connecting to Epinio
+      -  **By:** Checking Epinio info command
+      -  **By:** Targeting workspace namespace
+      -  **By:** Creating the application
+      -  **By:** Deploying a database with service
+      -  **By:** Bind the database to the app
+      -  **By:** Pushing an app with Env vars
+      -  **By:** Delete an app
+
+## `scenario5_test.go`
+
+- **Describe:** <Scenario5> Azure, Letsencrypt-staging, External Registry
+    - **It:** Installs with letsencrypt-staging cert and pushes an app
+      -  **By:** Checking LoadBalancer IP
+      -  **By:** Updating DNS Entries
+      -  **By:** Checking that DNS entry is correctly propagated
+      -  **By:** Installing Epinio
+      -  **By:** Connecting to Epinio
+      -  **By:** Checking Epinio info command
+      -  **By:** Pushing an app
+      -  **By:** Delete an app
+
+## `scenario6_test.go`
+
+- **Describe:** <Scenario6> Azure, epinio-ca, External Registry
+    - **It:** Installs with loadbalancer IP, custom domain and pushes an app
+      -  **By:** Checking LoadBalancer IP
+      -  **By:** Updating DNS Entries
+      -  **By:** Checking that DNS entry is correctly propagated
+      -  **By:** Installing Epinio
+      -  **By:** Connecting to Epinio
+      -  **By:** Checking Epinio info command
+      -  **By:** Pushing an app
+      -  **By:** Delete an app
+
+## `suite_test.go`
+
+      -  **By:** Upgrading
+      -  **By:** Setup And Checks Before Upgrade
+      -  **By:** Versions before upgrade
+      -  **By:** Deploy application pre-upgrade
+      -  **By:** Route:  + beforeRoute
+      -  **By:** Create configuration pre-upgrade
+      -  **By:** Create service pre-upgrade
+      -  **By:** Create custom catalog entry pre-upgrade
+      -  **By:** Upgrading actual
+      -  **By:** Checks After Upgrade
+      -  **By:** Versions after upgrade
+      -  **By:** Checking reachability ...
+      -  **By:** Checking configuration existence ...
+      -  **By:** Checking usability of old service
+      -  **By:** Checking service existence ...
+      -  **By:** Create configuration post-upgrade
+      -  **By:** Create service post-upgrade
+      -  **By:** Create custom catalog entry post-upgrade
+      -  **By:** Create application post-upgrade
+      -  **By:** Route:  + afterRoute
+      -  **By:** Teardown After Upgrade
+      -  **By:** Installing and configuring the prerequisites
+      -  **By:** Expecting a client binary
+      -  **By:** Compiling Epinio
+      -  **By:** Creating registry secret
+      -  **By:** Installing cert-manager
+      -  **By:** Installing ingress controller
+
 # Tests description for acceptance/apps
 
 ## `rails_test.go`
@@ -537,6 +656,36 @@
 
 - **Describe:** Wordpress
     - **It:** can deploy Wordpress
+
+# Tests description for acceptance/upgrade
+
+## `suite_test.go`
+
+*No test defined!*
+
+## `upgrade_bound_test.go`
+
+- **Describe:** <Upgrade2> Epinio upgrade with bound app and services
+    - **It:** Can upgrade epinio bound to a custom service
+      -  **By:** Versions before upgrade
+      -  **By:** Creating a service
+      -  **By:** Wait for deployment
+      -  **By:** Pushing Wordpress App
+      -  **By:** Bind it
+      -  **By:** Verify binding
+      -  **By:** Versions after upgrade
+      -  **By:** Restarting app
+
+## `upgrade_test.go`
+
+- **Describe:** <Upgrade1> Epinio upgrade with running app
+    - **It:** can upgrade epinio
+      -  **By:** Versions before upgrade
+      -  **By:** Versions after upgrade
+      -  **By:** Checking reachability ...
+      -  **By:** Creating a service post-upgrade
+      -  **By:** wait for deployment
+      -  **By:** Creating an application post-upgrade
 
 # Tests description for acceptance/api/v1
 
@@ -1014,153 +1163,4 @@
 ## `suite_test.go`
 
 *No test defined!*
-
-# Tests description for acceptance/install
-
-## `scenario1_test.go`
-
-- **Describe:** <Scenario1> GKE, epinio-ca
-      -  **By:** Domain:  + domain
-      -  **By:** Zone:    + zoneID
-    - **It:** Installs with loadbalancer IP, custom domain, and pushes an app
-      -  **By:** Checking LoadBalancer IP
-      -  **By:** Updating DNS Entries
-      -  **By:** Checking that DNS entry is correctly propagated
-      -  **By:** Installing Epinio
-      -  **By:** Connecting to Epinio
-      -  **By:** Checking Epinio info command
-      -  **By:** Pushing an app
-      -  **By:** Delete an app
-
-## `scenario2_test.go`
-
-- **Describe:** <Scenario2> GKE, Letsencrypt-staging, Zero instance
-    - **It:** Installs with letsencrypt-staging cert, custom domain and pushes an app with 0 instances
-      -  **By:** Creating letsencrypt issuer
-      -  **By:** Checking LoadBalancer IP
-      -  **By:** Updating DNS Entries
-      -  **By:** Checking that DNS entry is correctly propagated
-      -  **By:** Installing Epinio
-      -  **By:** Connecting to Epinio
-      -  **By:** Checking Epinio info command
-      -  **By:** Pushing an app with zero instances
-      -  **By:** Pushing an app with zero instances, and not verifying certs
-
-## `scenario3_test.go`
-
-- **Describe:** <Scenario3> RKE, Private CA, Configuration, on External Registry
-    - **It:** Installs with private CA and pushes an app with configuration
-      -  **By:** Installing MetalLB
-      -  **By:** Checking LoadBalancer IP
-      -  **By:** Configuring local-path storage
-      -  **By:** Creating private CA issuer
-      -  **By:** Installing Epinio
-      -  **By:** Connecting to Epinio
-      -  **By:** Checking Epinio info command
-      -  **By:** Creating a configuration and pushing an app
-      -  **By:** Delete an app
-
-## `scenario4_test.go`
-
-- **Describe:** <Scenario4> EKS, epinio-ca, on S3 storage
-    - **It:** Installs with loadbalancer IP, custom domain and pushes an app with env vars
-      -  **By:** Checking LoadBalancer IP
-      -  **By:** Updating DNS Entries
-      -  **By:** Checking that DNS entry is correctly propagated
-      -  **By:** Installing Epinio
-      -  **By:** Allow internal HTTP registry on EKS 1.24+
-      -  **By:** Connecting to Epinio
-      -  **By:** Checking Epinio info command
-      -  **By:** Targeting workspace namespace
-      -  **By:** Creating the application
-      -  **By:** Deploying a database with service
-      -  **By:** Bind the database to the app
-      -  **By:** Pushing an app with Env vars
-      -  **By:** Delete an app
-
-## `scenario5_test.go`
-
-- **Describe:** <Scenario5> Azure, Letsencrypt-staging, External Registry
-    - **It:** Installs with letsencrypt-staging cert and pushes an app
-      -  **By:** Checking LoadBalancer IP
-      -  **By:** Updating DNS Entries
-      -  **By:** Checking that DNS entry is correctly propagated
-      -  **By:** Installing Epinio
-      -  **By:** Connecting to Epinio
-      -  **By:** Checking Epinio info command
-      -  **By:** Pushing an app
-      -  **By:** Delete an app
-
-## `scenario6_test.go`
-
-- **Describe:** <Scenario6> Azure, epinio-ca, External Registry
-    - **It:** Installs with loadbalancer IP, custom domain and pushes an app
-      -  **By:** Checking LoadBalancer IP
-      -  **By:** Updating DNS Entries
-      -  **By:** Checking that DNS entry is correctly propagated
-      -  **By:** Installing Epinio
-      -  **By:** Connecting to Epinio
-      -  **By:** Checking Epinio info command
-      -  **By:** Pushing an app
-      -  **By:** Delete an app
-
-## `suite_test.go`
-
-      -  **By:** Upgrading
-      -  **By:** Setup And Checks Before Upgrade
-      -  **By:** Versions before upgrade
-      -  **By:** Deploy application pre-upgrade
-      -  **By:** Route:  + beforeRoute
-      -  **By:** Create configuration pre-upgrade
-      -  **By:** Create service pre-upgrade
-      -  **By:** Create custom catalog entry pre-upgrade
-      -  **By:** Upgrading actual
-      -  **By:** Checks After Upgrade
-      -  **By:** Versions after upgrade
-      -  **By:** Checking reachability ...
-      -  **By:** Checking configuration existence ...
-      -  **By:** Checking usability of old service
-      -  **By:** Checking service existence ...
-      -  **By:** Create configuration post-upgrade
-      -  **By:** Create service post-upgrade
-      -  **By:** Create custom catalog entry post-upgrade
-      -  **By:** Create application post-upgrade
-      -  **By:** Route:  + afterRoute
-      -  **By:** Teardown After Upgrade
-      -  **By:** Installing and configuring the prerequisites
-      -  **By:** Expecting a client binary
-      -  **By:** Compiling Epinio
-      -  **By:** Creating registry secret
-      -  **By:** Installing cert-manager
-      -  **By:** Installing ingress controller
-
-# Tests description for acceptance/upgrade
-
-## `suite_test.go`
-
-*No test defined!*
-
-## `upgrade_bound_test.go`
-
-- **Describe:** <Upgrade2> Epinio upgrade with bound app and services
-    - **It:** Can upgrade epinio bound to a custom service
-      -  **By:** Versions before upgrade
-      -  **By:** Creating a service
-      -  **By:** Wait for deployment
-      -  **By:** Pushing Wordpress App
-      -  **By:** Bind it
-      -  **By:** Verify binding
-      -  **By:** Versions after upgrade
-      -  **By:** Restarting app
-
-## `upgrade_test.go`
-
-- **Describe:** <Upgrade1> Epinio upgrade with running app
-    - **It:** can upgrade epinio
-      -  **By:** Versions before upgrade
-      -  **By:** Versions after upgrade
-      -  **By:** Checking reachability ...
-      -  **By:** Creating a service post-upgrade
-      -  **By:** wait for deployment
-      -  **By:** Creating an application post-upgrade
 
