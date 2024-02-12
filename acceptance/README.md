@@ -522,6 +522,52 @@
 
 - **Describe:** Users, LMisc
 
+# Tests description for acceptance/upgrade
+
+## `suite_test.go`
+
+*No test defined!*
+
+## `upgrade_bound_test.go`
+
+- **Describe:** <Upgrade2> Epinio upgrade with bound app and services
+    - **It:** Can upgrade epinio bound to a custom service
+      -  **By:** Versions before upgrade
+      -  **By:** Creating a service
+      -  **By:** Wait for deployment
+      -  **By:** Pushing Wordpress App
+      -  **By:** Bind it
+      -  **By:** Verify binding
+      -  **By:** Versions after upgrade
+      -  **By:** Restarting app
+
+## `upgrade_test.go`
+
+- **Describe:** <Upgrade1> Epinio upgrade with running app
+    - **It:** can upgrade epinio
+      -  **By:** Versions before upgrade
+      -  **By:** Versions after upgrade
+      -  **By:** Checking reachability ...
+      -  **By:** Creating a service post-upgrade
+      -  **By:** wait for deployment
+      -  **By:** Creating an application post-upgrade
+
+# Tests description for acceptance/apps
+
+## `rails_test.go`
+
+- **Describe:** RubyOnRails
+    - **It:** can deploy Rails
+
+## `suite_test.go`
+
+*No test defined!*
+
+## `wordpress_test.go`
+
+- **Describe:** Wordpress
+    - **It:** can deploy Wordpress
+
 # Tests description for acceptance/install
 
 ## `scenario1_test.go`
@@ -1117,50 +1163,4 @@
 ## `suite_test.go`
 
 *No test defined!*
-
-# Tests description for acceptance/apps
-
-## `rails_test.go`
-
-- **Describe:** RubyOnRails
-    - **It:** can deploy Rails
-
-## `suite_test.go`
-
-*No test defined!*
-
-## `wordpress_test.go`
-
-- **Describe:** Wordpress
-    - **It:** can deploy Wordpress
-
-# Tests description for acceptance/upgrade
-
-## `suite_test.go`
-
-*No test defined!*
-
-## `upgrade_bound_test.go`
-
-- **Describe:** <Upgrade2> Epinio upgrade with bound app and services
-    - **It:** Can upgrade epinio bound to a custom service
-      -  **By:** Versions before upgrade
-      -  **By:** Creating a service
-      -  **By:** Wait for deployment
-      -  **By:** Pushing Wordpress App
-      -  **By:** Bind it
-      -  **By:** Verify binding
-      -  **By:** Versions after upgrade
-      -  **By:** Restarting app
-
-## `upgrade_test.go`
-
-- **Describe:** <Upgrade1> Epinio upgrade with running app
-    - **It:** can upgrade epinio
-      -  **By:** Versions before upgrade
-      -  **By:** Versions after upgrade
-      -  **By:** Checking reachability ...
-      -  **By:** Creating a service post-upgrade
-      -  **By:** wait for deployment
-      -  **By:** Creating an application post-upgrade
 
