@@ -522,6 +522,22 @@
 
 - **Describe:** Users, LMisc
 
+# Tests description for acceptance/apps
+
+## `rails_test.go`
+
+- **Describe:** RubyOnRails
+    - **It:** can deploy Rails
+
+## `suite_test.go`
+
+*No test defined!*
+
+## `wordpress_test.go`
+
+- **Describe:** Wordpress
+    - **It:** can deploy Wordpress
+
 # Tests description for acceptance/install
 
 ## `scenario1_test.go`
@@ -1147,20 +1163,4 @@
       -  **By:** Creating a service post-upgrade
       -  **By:** wait for deployment
       -  **By:** Creating an application post-upgrade
-
-# Tests description for acceptance/apps
-
-## `rails_test.go`
-
-- **Describe:** RubyOnRails
-    - **It:** can deploy Rails
-
-## `suite_test.go`
-
-*No test defined!*
-
-## `wordpress_test.go`
-
-- **Describe:** Wordpress
-    - **It:** can deploy Wordpress
 
